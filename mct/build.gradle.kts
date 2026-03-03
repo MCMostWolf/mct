@@ -60,3 +60,7 @@ kotlin {
     }
 }
 
+
+dependencies {
+    ksp(libs.arrow.optics.ksp)
+}
