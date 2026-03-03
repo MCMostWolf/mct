@@ -1,0 +1,53 @@
+[versions]
+kotlin = "2.3.0"
+ksp = "2.3.5"
+korlibs = "6.0.2"
+okio = "3.16.2"
+serialization = "1.10.0-RC"
+collections-immutable = "0.4.0"
+arrow = "2.2.1.1"
+coroutines = "1.10.2"
+ensnbt = "0.1-SNAPSHOT"
+knbt = "0.11.9"
+cli = "0.3.6"
+kotest = "6.1.4"
+jetbrains-annotations = "26.1.0"
+
+[libraries]
+knbt = { module = "net.benwoodworth.knbt:knbt", version.ref = "knbt" }
+
+korlibs-io = { module = "com.soywiz:korlibs-io", version.ref = "korlibs" }
+
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
+
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-cli = { module = "org.jetbrains.kotlinx:kotlinx-cli", version.ref = "cli" }
+kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "cli" }
+
+arrow-stack = { module = "io.arrow-kt:arrow-stack", version.ref = "arrow" }
+arrow-core = { module = "io.arrow-kt:arrow-core" }
+arrow-functions = { module = "io.arrow-kt:arrow-functions" }
+arrow-fx-coroutines = { module = "io.arrow-kt:arrow-fx-coroutines" }
+arrow-optics = { module = "io.arrow-kt:arrow-optics" }
+arrow-optics-ksp = { module = "io.arrow-kt:arrow-optics-ksp-plugin", version.ref = "arrow" }
+
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+kotest-framework-engine = { module = "io.kotest:kotest-framework-engine", version.ref = "kotest" }
+kotest-asserter-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotest-asserter-arrow = { module = "io.kotest:kotest-assertions-arrow", version.ref = "kotest" }
+
+jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
+
+
+[bundles]
+okio = ["okio", "okio-fakefilesystem"]
+arrow = ["arrow-core", "arrow-fx-coroutines", "arrow-optics", "arrow-functions"]
+kotest = ["kotest-framework-engine", "kotest-asserter-core", "kotest-asserter-arrow"]
+
+[plugins]
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+kotest = { id = "io.kotest", version.ref = "kotest" }

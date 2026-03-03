@@ -1,0 +1,14 @@
+@file:Suppress("FunctionName")
+
+package mct.dp
+
+import mct.pointer.PatternSet
+import mct.pointer.RegexPattern
+import mct.pointer.RightPattern
+
+val BuiltinPatterns = PatternSet {
+    +RightPattern("#components>#custom_name")
+    +RegexPattern("""#components>#lore>\d+""")
+    +RegexPattern("""#components>#lore""")
+    +RegexPattern("""#components>#lore""")
+}
