@@ -7,6 +7,8 @@ import arrow.core.raise.nullable
 import kotlinx.coroutines.flow.*
 import mct.Env
 import mct.MCTWorkspace
+import mct.dp.mcfunction.MCFunctionExtractor
+import mct.dp.mcjson.MCJsonExtractor
 import mct.util.io.ROOT
 import mct.util.io.endsWith
 import mct.util.io.openZipReadWrite
@@ -16,15 +18,19 @@ import okio.Path
 import mct.ExtractionGroup.Datapack as ExtractionGroup
 
 fun MCTWorkspace.extractFromDatapack(): Flow<ExtractionGroup> {
+    val extractors = listOf(
+        MCFunctionExtractor(),
+        MCJsonExtractor(),
+    )
+
     return fs.listRecursively(datapackDir)
         .filter { it.endsWith(".zip") }
         .asFlow().flatMapMerge { path ->
-            println(path)
             fs.openZipReadWrite(path).use2 { zfs ->
                 zfs.listRecursively(Path.ROOT)
                     .asFlow()
                     .mapNotNull { zpath ->
-                        nullable { zpath to EXTRACTORS.find { zpath.endsWith(it.targetExtension) }.bind() }
+                        nullable { zpath to extractors.find { zpath.endsWith(it.targetExtension) }.bind() }
                     }
                     .flatMapMerge { (zpath, extractor) ->
                         either {
@@ -42,10 +48,6 @@ fun MCTWorkspace.extractFromDatapack(): Flow<ExtractionGroup> {
         }
 }
 
-private val EXTRACTORS = listOf(
-    extractFromMCFunction,
-    extractFromMCJson
-)
 
 internal interface Extractor {
     val targetExtension: String

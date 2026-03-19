@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.FreeSpec
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import mct.dp.mcjson.standardizeMCJson
 
 class StandardizeMCJsonTest : FreeSpec({
     "should work" {

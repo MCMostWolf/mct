@@ -1,0 +1,107 @@
+package mct.dp.mcfunction
+
+import mct.Logger
+import mct.dp.Extractor
+import mct.Extraction.Datapack as Extraction
+import mct.ExtractionGroup.Datapack as ExtractionGroup
+
+
+internal fun MCFunctionExtractor(
+    patterns: Set<ExtractPattern> = BuiltinPatterns
+) = Extractor("MCFunction", ".mcfunction") { env, zfs, zpath, path ->
+    val text = zfs.read(zpath) { readUtf8() }
+    context(env.logger) {
+        extractTextMCF(
+            text,
+            source = path.name,
+            path = zpath.normalized().toString(),
+            patterns = patterns,
+        )
+    }
+}
+
+private sealed interface Extracted {
+    data class Arg(val arg: MCCommand.Arg) : Extracted
+    data class GreedyString(val indices: IntRange, val content: String) : Extracted
+}
+
+context(logger: Logger)
+internal fun extractTextMCF(
+    mcf: String,
+    source: String,
+    path: String,
+    patterns: Set<ExtractPattern> = BuiltinPatterns
+): ExtractionGroup {
+    val mcfunctions = parseMCFunction(mcf)
+    val extractedArgs: Sequence<Extracted> = mcfunctions.asSequence().flatMap { command ->
+        extractTextFromCommand(patterns, command)
+    }
+    return ExtractionGroup(
+        source = source,
+        path = path,
+        extractions = extractedArgs.map { extracted ->
+            when (extracted) {
+                is Extracted.Arg -> {
+                    val arg = extracted.arg
+                    Extraction.MCFunction(
+                        indices = arg.indices,
+                        content = arg.content
+                    )
+                }
+
+                is Extracted.GreedyString -> Extraction.MCFunction(
+                    indices = extracted.indices,
+                    content = extracted.content
+                )
+            }
+        }.toList()
+    )
+}
+
+
+private fun extractTextFromCommand(
+    patterns: Set<ExtractPattern>,
+    command: MCCommand
+): Sequence<Extracted> {
+    if (command.name == "execute") { // handle nested subcommand after `run`
+        val index = command.args.indexOfFirst { it.content == "run" }
+        val subBeginPos = index + 1
+        if (subBeginPos == command.args.size) return emptySequence()
+        val rawSubcommand = command.args.subList(subBeginPos, command.args.size)
+        val subName = rawSubcommand.first()
+        val subBeginIndexRel = subName.relativeIndices.first
+        val subBeginIndexAbs = command.indices.first + subBeginIndexRel
+        val subIndicesAbs = subBeginIndexAbs..command.indices.last
+        val subRaw = command.raw.substring(subBeginIndexRel)
+        val subArgs = rawSubcommand.subList(1, rawSubcommand.size)
+        val subCommand = MCCommand(subRaw, subName.content, subIndicesAbs, subArgs)
+        return extractTextFromCommand(patterns, subCommand)
+    }
+    return patterns.asSequence()
+        .filter { it.command == command.name }
+        .filter { it.preCondition.matches(command) }
+        .flatMap { pattern ->
+            when (val selector = pattern.selected) {
+                is IndexSelector.Greedy -> {
+                    val commandBeginIndex = command.indices.first
+                    val beginIndexRelative =
+                        if (selector.position == 0) {
+                            if (command.name.length == command.raw.length) command.name.length
+                            else command.name.length + 1
+                        } else command[selector.position].relativeIndices.first
+                    val endIndexRelative = command.raw.length - 1
+                    val relRange = beginIndexRelative..endIndexRelative
+                    val absRange = (commandBeginIndex + beginIndexRelative)..(commandBeginIndex + endIndexRelative)
+                    Extracted.GreedyString(absRange, command.raw.substring(relRange)).let(::sequenceOf)
+                }
+
+                is IndexSelector.NonGreedy ->
+                    command.args.asSequence()
+                        .withIndex()
+                        .filter { (index, _) -> selector.matches(index + 1) }
+                        .filter { pattern.postCondition.matches(command, it.value) }
+                        .map { Extracted.Arg(it.value) }
+
+            }
+        }
+}

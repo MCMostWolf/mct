@@ -1,9 +1,11 @@
-package mct.dp
+package mct.dp.mcjson
 
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
+import mct.dp.Extractor
+import mct.dp.MCJsonExtractError
 import mct.pointer.*
 import mct.Extraction.Datapack.MCJson as Extraction
 import mct.ExtractionGroup.Datapack as ExtractionGroup
@@ -14,12 +16,15 @@ internal val MCJson = Json {
     isLenient = true
 }
 
-internal val extractFromMCJson = Extractor("MCJson", ".json") { env, zfs, zpath, path ->
+internal fun MCJsonExtractor(
+    patterns: Set<DataPointerPattern>? = BuiltinPatterns
+) = Extractor("MCJson", ".json") { env, zfs, zpath, path ->
     val text = zfs.read(zpath) { readUtf8() }
     extractTextMCJ(
         text,
         source = path.name,
         path = zpath.normalized().toString(),
+        patterns
     )
 }
 

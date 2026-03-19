@@ -14,3 +14,6 @@ inline fun <T> ArrayDeque<T>.popOrNull() = removeLastOrNull()
 
 
 fun NbtTag.toSnbt(): String = Snbt.encodeToString(this)
+
+@DslMarker
+internal annotation class BuilderMaker

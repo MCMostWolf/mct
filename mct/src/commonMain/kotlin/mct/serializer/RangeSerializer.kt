@@ -17,5 +17,6 @@ object IntRangeSerializer : KSerializer<IntRange> {
 
     override fun deserialize(decoder: Decoder): IntRange =
         delegated.deserialize(decoder).run { startInclusive..endInclusive }
-
 }
+
+typealias IntRangeSerializable = @Serializable(IntRangeSerializer::class) IntRange

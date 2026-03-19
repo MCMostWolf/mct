@@ -3,11 +3,14 @@
 package mct.serializer
 
 import kotlinx.serialization.json.Json
+import mct.dp.mcfunction.extractPatternModule
 import net.benwoodworth.knbt.*
 
-val Json = Json {
+val MCTJson = Json {
     prettyPrint = true
     prettyPrintIndent = "  "
+
+    serializersModule = extractPatternModule
 }
 
 private val CommonNbt= Nbt {

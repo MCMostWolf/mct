@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 import mct.pointer.DataPointer
 import mct.region.anvil.Coord
 import mct.region.anvil.model.ChunkDataKind
-import mct.serializer.IntRangeSerializer
+import mct.serializer.IntRangeSerializable
 
 /**
  * Represents a grouped collection of extracted pointer from a specific source.
@@ -71,7 +71,7 @@ sealed interface Extraction {
         @Serializable
         @SerialName("MCFunction")
         data class MCFunction(
-            val indices: @Serializable(IntRangeSerializer::class) IntRange,
+            val indices: IntRangeSerializable,
             override val content: String,
         ) : Datapack
 
@@ -148,7 +148,7 @@ sealed interface Replacement {
         @Serializable
         @SerialName("MCFunction")
         data class MCFunction(
-            val indices: @Serializable(IntRangeSerializer::class) IntRange,
+            val indices: IntRangeSerializable,
             override val replacement: String,
         ) : Datapack
 

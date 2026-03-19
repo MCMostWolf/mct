@@ -7,6 +7,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import mct.MCTWorkspace
+import mct.dp.mcjson.MCJson
+import mct.dp.mcjson.standardizeMCJson
 import mct.pointer.DataPointer
 import mct.util.io.openZipReadWrite
 import mct.util.io.use2

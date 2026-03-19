@@ -1,6 +1,6 @@
 @file:Suppress("FunctionName")
 
-package mct.dp
+package mct.dp.mcjson
 
 import mct.pointer.PatternSet
 import mct.pointer.RegexPattern
