@@ -1,31 +1,33 @@
-package mct
+package mct.cli.region
+
 
 import arrow.core.raise.Raise
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
-import kotlinx.coroutines.flow.toList
-import mct.dp.extractFromDatapack
+import mct.MCTError
+import mct.cli.PrettyJson
+import mct.cli.WorkspaceCommand
+import mct.region.extractFromRegion
+import okio.FileSystem
 import okio.Path.Companion.toPath
 
-val DatapackCmd: SuspendingCliktCommand = Datapack()
-    .subcommands(ExtractDatapack())
+val RegionCmd: SuspendingCliktCommand = Region()
+    .subcommands(RegionExtract())
 
-private class Datapack : SuspendingCliktCommand(name = "db") {
+private class Region : SuspendingCliktCommand(name = "region") {
     override suspend fun run() {
-        echo("Some operation about datapacks.")
+        echo("Some operation about region.")
     }
 }
 
-private class ExtractDatapack : BaseCommand(name = "extract") {
-    val input by option().required()
+private class RegionExtract : WorkspaceCommand(name = "extract") {
     val output by option().required()
 
-    context(_: Raise<MCTError>)
+    context(_: Raise<MCTError>, fs: FileSystem)
     override suspend fun App() {
-        val workspace = MCTWorkspace(input.toPath(), env)
-        val extractions = workspace.extractFromDatapack().toList()
+        val extractions = workspace.extractFromRegion()
         env.fs.write(output.toPath()) {
             val result = PrettyJson.encodeToString(extractions)
             writeUtf8(result)

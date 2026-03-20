@@ -8,6 +8,7 @@ import korlibs.io.file.std.createZipFromTreeTo
 import korlibs.io.file.std.openAsZip
 import korlibs.io.lang.unsupported
 import korlibs.io.stream.toAsyncStream
+import okio.BufferedSource
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
@@ -29,6 +30,18 @@ val Path.stem get() = name.substringBeforeLast(".")
 val Path.extension get() = name.substringAfterLast(".")
 fun Path.startsWith(prefix: String) = name.endsWith(prefix)
 fun Path.endsWith(suffix: String) = name.endsWith(suffix)
+
+inline fun Path.readText(fs: FileSystem) = fs.read(this, BufferedSource::readUtf8)
+
+context(fs: FileSystem)
+inline fun Path.readText() = readText(fs)
+
+inline fun Path.writeText(content: String, fs: FileSystem) = fs.write(this) {
+    writeUtf8(content)
+}
+
+context(fs: FileSystem)
+inline fun Path.writeText(content: String) = writeText(content, fs)
 
 
 suspend fun FileSystem.openZipReadWrite(path: Path): ZipFileSystem {

@@ -1,11 +1,17 @@
-package mct
+package mct.cli
 
 import arrow.core.raise.Raise
 import arrow.core.raise.either
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.required
+import mct.Env
+import mct.LoggerLevel
+import mct.MCTError
+import mct.MCTWorkspace
 import okio.FileSystem
+import okio.Path.Companion.toPath
 import kotlin.system.exitProcess
 
 abstract class BaseCommand(
@@ -18,7 +24,7 @@ abstract class BaseCommand(
             val loggerLevels = loggerLevels.map { LoggerLevel.valueOf(it) }
             Env(
                 FileSystem.SYSTEM,
-                ConsoleLogger(this, loggerLevels)
+                ColorTerminalLogger(loggerLevels)
             )
         } catch (_: Exception) {
             echo("Only ${LoggerLevel.entries} supported")
@@ -28,12 +34,22 @@ abstract class BaseCommand(
 
     override suspend fun run() {
         either {
-            App()
+            context(env.fs) {
+                App()
+            }
         }.onLeft { error ->
             echo(error.message, err = true)
         }
     }
 
-    context(_: Raise<MCTError>)
+    context(_: Raise<MCTError>, fs: FileSystem)
     protected abstract suspend fun App()
+}
+
+abstract class WorkspaceCommand(
+    name: String? = null
+) : BaseCommand(name) {
+    val input: String by option("input", "i").required()
+
+    val workspace by lazy { MCTWorkspace(input.toPath(), env) }
 }
