@@ -64,7 +64,11 @@ fun interface PreCondition {
 }
 
 sealed interface IndexSelector {
+    @Serializable
+    @SerialName("greedy")
     data class Greedy(val position: Int) : IndexSelector
+
+    @SerialName("non_greedy")
     fun interface NonGreedy : IndexSelector {
         // 1-based index
         fun matches(index: Int): Boolean
@@ -152,6 +156,20 @@ fun interface PostCondition {
             override fun matches(command: MCCommand, arg: MCCommand.Arg): Boolean =
                 _regex.matches(arg.content)
         }
+
+        @Serializable
+        @SerialName("contain")
+        data class Contain(val content: String) : PostCondition {
+            override fun matches(command: MCCommand, arg: MCCommand.Arg): Boolean =
+                content in arg.content
+        }
+
+        @Serializable
+        @SerialName("equal")
+        data class Equal(val content: String) : PostCondition {
+            override fun matches(command: MCCommand, arg: MCCommand.Arg): Boolean =
+                content == arg.content
+        }
     }
 }
 
@@ -162,11 +180,12 @@ val extractPatternModule = SerializersModule {
         subclass(PreCondition.Companion.Or::class)
         subclass(PreCondition.Companion.None::class)
         subclass(PreCondition.Companion.WithSize::class)
+        subclass(PreCondition.Companion.Regex::class)
     }
 
     polymorphic(IndexSelector::class) {
         subclass(IndexSelector.Greedy::class)
-        polymorphic(IndexSelector::Greedy::class) {
+        polymorphic(IndexSelector.Greedy::class) {
             subclass(IndexSelector.NonGreedy.Companion.Any::class)
             subclass(IndexSelector.NonGreedy.Companion.And::class)
             subclass(IndexSelector.NonGreedy.Companion.Or::class)
@@ -184,5 +203,7 @@ val extractPatternModule = SerializersModule {
         subclass(PostCondition.Companion.None::class)
         subclass(PostCondition.Companion.At::class)
         subclass(PostCondition.Companion.MatchRegex::class)
+        subclass(PostCondition.Companion.Contain::class)
+        subclass(PostCondition.Companion.Equal::class)
     }
 }
