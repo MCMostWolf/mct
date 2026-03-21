@@ -85,9 +85,13 @@ internal fun standardizeMCJson(mcjson: String): String {
                 result.append('"')
             }
 
-            '"' if inSingleQuote -> {
-                result.append("\\\"")
-                inDoubleQuote = !inDoubleQuote
+            '"' -> when {
+                inSingleQuote -> result.append("\\\"")
+                inDoubleQuote -> {
+                    result.append("\"")
+                    inDoubleQuote = !inDoubleQuote
+                }
+                else -> result.append("\"")
             }
 
             '\\' if inSingleQuote && i + 1 < mcjson.length && chars[i + 1] == '\'' -> {

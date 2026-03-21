@@ -9,12 +9,13 @@ import mct.region.anvil.Region.Companion.CHUNK_COUNT
 import mct.util.divCeil
 import net.benwoodworth.knbt.NbtTag
 import okio.FileHandle
+import okio.IOException
 import okio.buffer
 import okio.use
 import kotlin.math.min
 import kotlin.time.Clock
 
-class RawRegion(
+class RawRegion internal constructor(
     override val regionX: Int, // align with 32
     override val regionZ: Int, // align with 32
     override val offsets: ChunkOffsetTable,
@@ -45,18 +46,30 @@ class RawRegion(
                 handle.source(fileOffset).buffer().use { source ->
                     val size = source.readInt()
                         .toUInt() // beginning from the 5th byte of this chunk, excludes self and compress kind byte
-                    val compressKind = source.readByte()
+                    val actualSectorByteCount = offset.sectorUsedCount.toLong() * SECTOR_SIZE
+                    val usedSize = 5 + size.toLong()
+                    require(usedSize <= actualSectorByteCount) {
+                        "Chunk size($usedSize) exceeds allocated sectors($actualSectorByteCount)"
+                    }
 
+                    val compressKind = source.readByte()
                     val nbtSerializer = RawChunk.getNbtSerializer(compressKind)
 
-                    val bytes = source.readByteArray(size.toLong())
-                    val actualSectorByteCount = offset.sectorUsedCount.toLong() * SECTOR_SIZE
-                    val usedSize = 5u + size
+                    val bytes = try {
+                        source.readByteArray(size.toLong())
+                    } catch (_: IOException) {
+                        return@List null
+                    }
+
                     val paddingSize =
-                        min(handle.size() - handle.position(source), actualSectorByteCount - usedSize.toLong())
+                        min(handle.size() - handle.position(source), actualSectorByteCount - usedSize)
                     source.skip(paddingSize)
 
-                    val data = nbtSerializer.decodeFromByteArray<NbtTag>(bytes)
+                    val data = try {
+                        nbtSerializer.decodeFromByteArray<NbtTag>(bytes)
+                    } catch (_: IOException) {
+                        return@List null
+                    }
                     RawChunk(index.toUInt(), size, compressKind, data, bytes)
                 }
             }
@@ -73,20 +86,22 @@ class RawRegion(
     fun inferFilename() = "r.$regionX.$regionZ.mca"
 
     fun writeTo(handle: FileHandle) {
-        var chunkBeginPos: Long
         handle.sink().buffer().use { sink ->
             offsets.writeTo(sink)
             timestamps.writeTo(sink)
-            chunkBeginPos = handle.position(sink) // must be 8192
         }
-        val necessaryChunkCount = offsets.offsets.indexOfLast { !it.isEmpty() }
-        val necessarySectorCount = offsets.offsets.sliceArray(0..necessaryChunkCount).sumOf { it.sectorUsedCount.toUInt() }
-        handle.resize(chunkBeginPos + necessarySectorCount.toLong() * SECTOR_SIZE.toLong())
+        val necessarySectorCount = offsets.offsets
+            .asSequence()
+            .filter { !it.isEmpty() }
+            .maxOfOrNull { it.sectorOffset + it.sectorUsedCount }?.toLong()
+            ?: 2
+
+        handle.resize(necessarySectorCount * SECTOR_SIZE)
 
         offsets.offsets.forEachIndexed { index, offset ->
             if (offset.isEmpty()) return@forEachIndexed
             val chunk = chunks[index] ?: return@forEachIndexed
-            handle.sink(offset.sectorOffset.toLong()).buffer()
+            handle.sink(offset.sectorOffset.toLong() * SECTOR_SIZE).buffer()
                 .use(chunk::writeTo)
         }
     }

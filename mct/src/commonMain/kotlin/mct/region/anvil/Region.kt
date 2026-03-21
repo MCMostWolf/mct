@@ -32,7 +32,7 @@ value class ChunkOffsetTable(
     }
 
     init {
-        require(offsets.size == Region.Companion.CHUNK_COUNT)
+        require(offsets.size == Region.CHUNK_COUNT)
     }
 
     fun writeTo(sink: BufferedSink) {
