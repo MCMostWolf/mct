@@ -38,4 +38,7 @@ interface DataPointerPatternSetBuilderScope {
 private typealias S = DataPointerPatternSetBuilderScope
 
 inline fun S.RightPattern(right: String) = DataPointerPattern { it.matchesRight(right) }
-inline fun S.RegexPattern(@Language("RegExp") regex: String) = DataPointerPattern { it.matches(regex.toRegex()) }
+inline fun S.RegexPattern(@Language("RegExp") regex: String): DataPointerPattern {
+    val _r = regex.toRegex()
+    return DataPointerPattern { it.matches(_r) }
+}

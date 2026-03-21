@@ -33,7 +33,7 @@ inline fun Sequence<DataPointerWithValue>.filterPointer(pattern: DataPointerPatt
     filter { (ptr, _) -> pattern.match(ptr) }
 
 inline fun Sequence<DataPointerWithValue>.filterPointer(patterns: Iterable<DataPointerPattern>?) =
-    filter { (ptr, _) -> patterns?.any { it.match(ptr)} ?:true }
+    filter { (ptr, _) -> patterns?.any { it.match(ptr) } ?: true }
 
 inline fun DataPointer.markMap(point: String) =
     DataPointer.Map(point, this)
@@ -95,7 +95,7 @@ fun DataPointer.encodeToString() = buildString(::encodeTo)
 context(_: Raise<DataPointerParseError>)
 fun DataPointer.Companion.decodeFromString(str: String): DataPointer {
     ensure(str.startsWith(">")) {
-        DataPointerParseError("Expected '>' at begging, but found ${str.first()}")
+        DataPointerParseError("Expected '>' at beginning, but found ${str.first()}")
     }
     val segments = mutableListOf<String>()
 
@@ -126,8 +126,8 @@ fun DataPointer.Companion.decodeFromString(str: String): DataPointer {
             val segment = buffer.toString()
             buffer.clear()
             segments.add(segment)
-            if (i == buffer.length - 1) {
-                return DataPointer.Terminator // terminate
+            ensure(i != str.length - 1) {
+                DataPointerParseError("DataPointer cannot end with `>`")
             }
             continue
         }

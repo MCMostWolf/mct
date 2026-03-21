@@ -5,10 +5,10 @@ import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.equals.shouldBeEqual
 import io.kotest.matchers.shouldBe
-import mct.Extraction
-import mct.ExtractionGroup
+import mct.DatapackExtraction
+import mct.DatapackExtractionGroup
+import mct.DatapackReplacement
 import mct.Logger
-import mct.Replacement
 import mct.dp.mcfunction.MCCommand
 import mct.dp.mcfunction.extractTextMCF
 
@@ -20,7 +20,7 @@ class MCFunctionTest : StringSpec({
         }
     }
 
-    fun extractTextMCF(mcf: String): ExtractionGroup.Datapack {
+    fun extractTextMCF(mcf: String): DatapackExtractionGroup {
         val logger = Logger.Console()
         return context(logger) {
             extractTextMCF(mcf, "test", "test")
@@ -36,7 +36,7 @@ class MCFunctionTest : StringSpec({
                 complex "item_id_001" b{strength:50b, durability:100s}
                 
                 # test escape
-                pointer modify storage asset:artifact Name set value '{"text":"アンク\'s Fury","color":"#FF5555","bold":true}'
+                data modify storage asset:artifact Name set value '{"text":"アンク\'s Fury","color":"#FF5555","bold":true}'
                 tell @a "\"Kukayo\": {\"text\": \"A text compound is like this\"} 🫧"
                 
                 \\ invali char
@@ -49,7 +49,9 @@ class MCFunctionTest : StringSpec({
     "test parser" {
         val mcfunctions = parseMCFunction(TEST_MCF)
         withClue(mcfunctions) {
-            mcfunctions.map { it.name } shouldBeEqual listOf("tellraw", "tellraw", "complex", "pointer", "tell")
+            mcfunctions.map { it.name } shouldBeEqual listOf(
+                "tellraw", "tellraw", "complex", "data", "tell", "say", "execute"
+            )
         }
         mcfunctions.forEach {
             println(it)
@@ -65,12 +67,12 @@ class MCFunctionTest : StringSpec({
         val extraction = extractTextMCF(TEST_MCF).extractions
         val replacements = extraction.map {
             when (it) {
-                is Extraction.Datapack.MCFunction -> Replacement.Datapack.MCFunction(it.indices, "{CIALLO}")
-                is Extraction.Datapack.MCJson -> fail("Should not reach")
+                is DatapackExtraction.MCFunction -> DatapackReplacement.MCFunction(it.indices, "{CIALLO}")
+                is DatapackExtraction.MCJson -> fail("Should not reach")
             }
         }
         val backfilled = TEST_MCF.backfill(replacements)
-        backfilled shouldBe  """
+        backfilled shouldBe """
                 tellraw @a {CIALLO}
                 
                 # ignore "Ciallo"
@@ -78,7 +80,7 @@ class MCFunctionTest : StringSpec({
                 complex "item_id_001" b{strength:50b, durability:100s}
                 
                 # test escape
-                pointer modify storage asset:artifact Name set value '{"text":"アンク\'s Fury","color":"#FF5555","bold":true}'
+                data modify storage asset:artifact Name set value '{"text":"アンク\'s Fury","color":"#FF5555","bold":true}'
                 tell @a {CIALLO}
                 
                 \\ invali char
