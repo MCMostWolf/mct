@@ -179,7 +179,7 @@ val BuiltinPatterns = PatternSet {
 
 }
 
-private fun String.isTextComponent() = contains("\"text\"")
+private fun String.isTextComponent() = contains("\"text\"") || contains("\"translate\"")
 
 
 
