@@ -10,6 +10,7 @@ dependencyResolutionManagement {
     rulesMode = RulesMode.PREFER_SETTINGS
     repositories {
         mavenCentral()
+        google()
         mavenLocal()
     }
 
