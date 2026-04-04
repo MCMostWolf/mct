@@ -33,7 +33,11 @@ inline fun Sequence<DataPointerWithValue>.filterPointer(pattern: DataPointerPatt
     filter { (ptr, _) -> pattern.match(ptr) }
 
 inline fun Sequence<DataPointerWithValue>.filterPointer(patterns: Iterable<DataPointerPattern>?) =
-    filter { (ptr, _) -> patterns?.any { it.match(ptr) } ?: true }
+    filter { (ptr, _) -> ptr.matches(patterns) }
+
+fun DataPointer.matches(
+    patterns: Iterable<DataPointerPattern>?,
+): Boolean = patterns?.any { it.match(this) } ?: true
 
 inline fun DataPointer.markMap(point: String) =
     DataPointer.Map(point, this)

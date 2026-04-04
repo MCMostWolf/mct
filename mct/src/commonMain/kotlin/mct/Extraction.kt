@@ -84,13 +84,15 @@ sealed interface DatapackExtraction : Extraction {
  * An extraction from an NBT structure within a region file.
  * @property index The linear index of the chunk within the region (0-1023).
  * @property pointer The NBT path/pointer to the specific tag.
- * @property content The extracted NBT pointer represented as an SNBT string.
+ * @property isStoredViaCompound Whether the content was stored in a NbtCompound
+ * @property content The extracted NBT pointer represented as an SNBT string if [isStoredViaCompound]; otherwise as JSON.
  */
 @Serializable
 @SerialName("Region")
 data class RegionExtraction(
     val index: Int,
     val pointer: DataPointer,
+    val isStoredViaCompound: Boolean = false,
     override val content: String,
 ) : Extraction
 
@@ -165,5 +167,6 @@ sealed interface DatapackReplacement : Replacement {
 data class RegionReplacement(
     val index: Int,
     val pointer: DataPointer,
+    val isStoredViaCompound: Boolean = false,
     override val replacement: String,
 ) : Replacement

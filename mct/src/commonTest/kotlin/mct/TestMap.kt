@@ -1,6 +1,9 @@
 package mct
 
+import arrow.core.getOrElse
+import arrow.core.raise.either
 import com.goncalossilva.resources.Resource
+import korlibs.io.lang.unreachable
 import mct.util.io.openZipReadWrite
 import mct.util.io.useAsync
 import okio.Path.Companion.toPath
@@ -12,5 +15,7 @@ suspend fun TestMapWorkspace() = resource.readBytes().openZipReadWrite().useAsyn
         fs = it,
         logger = Logger.Console()
     )
-    MCTWorkspace("MCT Test".toPath(), env)
+    either {
+        MCTWorkspace("MCT Test".toPath(), env)
+    }.getOrElse { unreachable }
 }

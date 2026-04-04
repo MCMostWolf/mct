@@ -18,6 +18,8 @@ val BuiltinPatterns = PatternSet {
     +RegexPattern("""#components>#minecraft:lore>\d+(>#raw)?$""")
     +RegexPattern("""#components>#minecraft:written_book_content>#(pages>\d+|title|author)(>#raw)?$""")
     +RegexPattern("""#components>#minecraft:writable_book_content>#pages>\d+(>#raw)?$""")
+    +RegexPattern("""#components>#minecraft:custom_name(>#raw)?$""")
+
 
 
     // --- Written Books (Nested in Item Tags) ---
@@ -32,7 +34,7 @@ val BuiltinPatterns = PatternSet {
     }
     // --- Entities (Mobs, Armor Stands, etc.) ---
     // Matches CustomName for all entities stored in the chunk
-    +RegexPattern("""^>#>#Entities>\d+>#CustomName$""")
+    +RegexPattern("""(^>#>#Entities>\d+|(>#SpawnData|>#SpawnPotentials\d+>#data)>#entity)>#CustomName$""")
 
     // --- Block Entities (Signs, Containers, Spawners) ---
     // 1. Signs (Front & Back)

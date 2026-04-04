@@ -5,12 +5,18 @@ import arrow.core.raise.context.raise
 import arrow.core.raise.recover
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
 import mct.MCTWorkspace
 import mct.RegionReplacementGroup
 import mct.pointer.DataPointerReplacementGroup
 import mct.pointer.toReplacementGroups
 import mct.region.anvil.model.ChunkDataKind
-import net.benwoodworth.knbt.*
+import mct.serializer.Snbt
+import mct.serializer.toNbtListUnsafe
+import net.benwoodworth.knbt.NbtCompound
+import net.benwoodworth.knbt.NbtList
+import net.benwoodworth.knbt.NbtString
+import net.benwoodworth.knbt.NbtTag
 
 context(_: Raise<BackfillError>)
 suspend fun MCTWorkspace.backfillRegion(replacementGroups: Iterable<RegionReplacementGroup>) = coroutineScope {
@@ -60,6 +66,10 @@ private fun NbtTag.transform(
     }
 
     is NbtCompound -> {
+        pointers.filterIsInstance<DataPointerReplacementGroup.Terminator>().firstOrNull()?.let {terminator ->
+            return Snbt.decodeFromString(terminator.replacement)
+        }
+
         val pointers = pointers.filterIsInstance<DataPointerReplacementGroup.Map>()
 
         val transformed = toMutableMap()
@@ -83,26 +93,3 @@ private fun NbtTag.transform(
 }
 
 
-private fun List<NbtTag>.toNbtListUnsafe(): NbtList<NbtTag> {
-    val first = first()
-
-    @Suppress(
-        "CAST_NEVER_SUCCEEDS", "UNCHECKED_CAST",
-        "UPPER_BOUND_VIOLATED_IN_TYPE_OPERATOR_OR_PARAMETER_BOUNDS_WARNING"
-    )
-    fun <T> cast(): List<T> = this as List<T>
-    return when (first) {
-        is NbtByte -> NbtList(cast<NbtByte>())
-        is NbtByteArray -> NbtList(cast<NbtByteArray>())
-        is NbtCompound -> NbtList(cast<NbtCompound>())
-        is NbtDouble -> NbtList(cast<NbtDouble>())
-        is NbtFloat -> NbtList(cast<NbtFloat>())
-        is NbtInt -> NbtList(cast<NbtInt>())
-        is NbtIntArray -> NbtList(cast<NbtIntArray>())
-        is NbtLong -> NbtList(cast<NbtLong>())
-        is NbtLongArray -> NbtList(cast<NbtLongArray>())
-        is NbtShort -> NbtList(cast<NbtShort>())
-        is NbtString -> NbtList(cast<NbtString>())
-        is NbtList<*> -> NbtList(cast<NbtList<*>>())
-    }
-}

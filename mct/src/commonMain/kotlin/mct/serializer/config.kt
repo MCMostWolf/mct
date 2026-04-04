@@ -10,6 +10,7 @@ val MCTJson = Json {
     prettyPrint = true
     prettyPrintIndent = "  "
     ignoreUnknownKeys = true
+    encodeDefaults = false
 
     serializersModule = extractPatternModule
 }
@@ -32,7 +33,6 @@ val NbtGzip = Nbt(CommonNbt) {
 val NbtNone = Nbt(CommonNbt) {
     compression = NbtCompression.None
 }
-
 
 val Snbt = StringifiedNbt {
     prettyPrint = true

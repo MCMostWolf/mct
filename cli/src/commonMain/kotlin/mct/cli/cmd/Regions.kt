@@ -32,7 +32,7 @@ class Region : SuspendingCliktCommand(name = "region") {
 }
 
 private class RegionExtract : WorkspaceCommand(name = "extract") {
-    val output by option().path().required()
+    val output by option("--output", "-o").path().required()
     val patterns by option().jsonFile<Set<DataPointerPattern>>().default(emptySet())
 
     context(_: Raise<MCTError>, fs: FileSystem)

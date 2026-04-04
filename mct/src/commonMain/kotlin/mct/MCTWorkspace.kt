@@ -2,11 +2,10 @@ package mct
 
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
-import mct.model.LevelRoot
+import arrow.core.raise.context.ensure
 import mct.region.anvil.*
 import mct.serializer.NbtGzip
 import net.benwoodworth.knbt.NbtCompound
-import net.benwoodworth.knbt.decodeFromNbtTag
 import net.benwoodworth.knbt.decodeFromSource
 import okio.FileSystem
 import okio.Path
@@ -17,18 +16,35 @@ data class Env(
     val logger: Logger = Logger.None
 )
 
-class MCTWorkspace(
+sealed interface OpenError : MCTError {
+    data class UnvalidatedDir(val dir: Path) : OpenError {
+        override val message = "There isn't level.dat founded in $dir"
+    }
+}
+
+class MCTWorkspace private constructor(
     val rootDir: Path,
     val env: Env
 ) {
+    companion object {
+        context(_: Raise<OpenError>)
+        operator fun invoke(rootDir: Path, env: Env): MCTWorkspace {
+            ensure (env.fs.exists(rootDir / "level.dat")) {
+                OpenError.UnvalidatedDir(rootDir)
+            }
+            return MCTWorkspace(rootDir, env)
+        }
+    }
+
     val fs get() = env.fs
     val logger get() = env.logger
 
     val level =
         fs.read(rootDir / "level.dat".toPath()) {
             val rootTag = NbtGzip.decodeFromSource<NbtCompound>(this)
-
-            NbtGzip.decodeFromNbtTag<LevelRoot>(rootTag)
+//            NbtGzip.decodeFromNbtTag<LevelRoot>(rootTag)
+            // for backwards compatibility, use NbtTag rather but deserialization
+            rootTag
         }
 
     val datapackDir = rootDir / "datapacks"

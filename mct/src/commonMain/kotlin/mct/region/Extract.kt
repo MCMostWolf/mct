@@ -8,6 +8,7 @@ import mct.RegionExtractionGroup
 import mct.pointer.*
 import mct.region.anvil.Coord
 import mct.region.anvil.model.ChunkDataKind
+import mct.util.toSnbt
 import net.benwoodworth.knbt.NbtCompound
 import net.benwoodworth.knbt.NbtList
 import net.benwoodworth.knbt.NbtString
@@ -33,13 +34,13 @@ fun MCTWorkspace.extractFromRegion(
                         .flatMap { chunk ->
                             chunk.data.extractTexts()
                                 .filterPointer(patterns)
-                                .map { (pointer, content) ->
+                                .map { (pointer, content, isStoredViaCompound) ->
                                     RegionExtraction(
                                         index = chunk.index.toInt(),
                                         pointer = pointer,
+                                        isStoredViaCompound = isStoredViaCompound,
                                         content = content
                                     )
-
                                 }
                         }
                     flowOf(
@@ -56,22 +57,48 @@ fun MCTWorkspace.extractFromRegion(
     }
 }
 
+internal data class PointerWithExtension(
+    val pointer: DataPointer,
+    val content: String,
+    val isStoredViaCompound: Boolean,
+)
 
-internal fun NbtTag.extractTexts(): Sequence<DataPointerWithValue> = when (this) {
+private inline fun Sequence<PointerWithExtension>.filterPointer(patterns: Iterable<DataPointerPattern>?) =
+    filter { (ptr, _, _) -> ptr.matches(patterns) }
+
+internal fun NbtTag.extractTexts(): Sequence<PointerWithExtension> = when (this) {
     is NbtList<*> -> asSequence().withIndex().flatMap { (index, tag) ->
         tag.extractTexts().map {
-            it.markArray(index)
+            it.copy(pointer = it.pointer.markArray(index))
         }
     } // wrap inner pointer
 
-    is NbtCompound -> asSequence().flatMap { (key, value) ->
-        value.extractTexts().map {
-            it.markMap(key)
-        }
-    } // wrap inner pointer
+    is NbtCompound -> {
+        if (isTextCompound()) {
+            sequenceOf(PointerWithExtension(DataPointer.Terminator, toSnbt(), true))
+        } else
+            asSequence().flatMap { (key, value) ->
+                value.extractTexts().map {
+                    it.copy(pointer = it.pointer.markMap(key))
+                }
+            } // wrap inner pointer
+    }
 
-    is NbtString -> sequenceOf(DataPointer.Terminator to value)
+    is NbtString -> {
+        sequenceOf(PointerWithExtension(DataPointer.Terminator, value, false))
+    }
+
     else -> emptySequence()
 }
 
+private val MAYBE_FIELDS = arrayOf(
+    "text",
+    "translate",
+    "selector",
+    "score",
+    "nbt",
+    "keybind",
+)
+
+private fun NbtCompound.isTextCompound() = MAYBE_FIELDS.any(this::containsKey)
 

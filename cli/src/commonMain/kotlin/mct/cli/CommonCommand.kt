@@ -1,5 +1,6 @@
 package mct.cli
 
+import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.either
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
@@ -60,6 +61,12 @@ abstract class WorkspaceCommand(
 ) : BaseCommand(name) {
     val input by option("--input", "-i", help = "The path to your map where there should be level.dat").path().required()
 
-    val workspace by lazy { MCTWorkspace(input, env) }
+    val workspace by lazy {
+        either{
+            MCTWorkspace(input, env)
+        }.getOrElse {
+            throw CliktError(it.message)
+        }
+    }
 }
 
