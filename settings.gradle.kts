@@ -1,9 +1,8 @@
 @file:Suppress("UnstableApiUsage")
 
-dependencyResolutionManagement {
+pluginManagement {
     repositories {
-        mavenCentral()
-        mavenLocal()
+        gradlePluginPortal()
     }
 }
 
@@ -13,8 +12,16 @@ dependencyResolutionManagement {
         mavenCentral()
         mavenLocal()
     }
+
+    versionCatalogs {
+        create("kotlinWrappers") {
+            val wrappersVersion = "2026.4.2"
+            from("org.jetbrains.kotlin-wrappers:kotlin-wrappers-catalog:$wrappersVersion")
+        }
+    }
 }
+
 
 rootProject.name = "mct"
 
-include("mct", "cli")
+include("mct", "cli", "web")

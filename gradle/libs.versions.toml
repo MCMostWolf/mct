@@ -12,6 +12,10 @@ kotest = "6.1.10"
 jetbrains-annotations = "26.1.0"
 clikt = "5.1.0"
 shadow = "9.3.2"
+compose = "1.10.3"
+material3 = "1.10.0-alpha05"
+androidx-lifecycle = "2.10.0"
+
 
 [libraries]
 knbt = { module = "net.benwoodworth.knbt:knbt", version.ref = "knbt" }
@@ -41,11 +45,21 @@ jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "j
 
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 
+androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle" }
+androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
+
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "material3" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "compose" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }
+compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "compose" }
 
 [bundles]
 okio = ["okio", "okio-fakefilesystem"]
 arrow = ["arrow-core", "arrow-fx-coroutines", "arrow-functions"]
 kotest = ["kotest-framework-engine", "kotest-asserter-core", "kotest-asserter-arrow"]
+
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -53,3 +67,6 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotest = { id = "io.kotest", version.ref = "kotest" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose" }
