@@ -2,7 +2,6 @@ package mct.pointer
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 
 @Serializable
 sealed interface CustomizedDataPointerPattern {
@@ -27,8 +26,7 @@ sealed interface CustomizedDataPointerPattern {
         val regex: String,
         override val negative: Boolean
     ) : CustomizedDataPointerPattern {
-        @Transient
-        private val _regex = regex.toRegex()
+        private val _regex by lazy { regex.toRegex() }
         override fun compile() = DataPointerPattern { pointer ->
             pointer.matches(_regex) != negative
         }
