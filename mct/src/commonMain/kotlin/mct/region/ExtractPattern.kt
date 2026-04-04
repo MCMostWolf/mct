@@ -11,28 +11,32 @@ val BuiltinPatterns = PatternSet {
     +RightPattern("#display>#Name")                   // Item custom name
     +RightPattern("#display>#Lore")                   // Item lore lines
 
+
     // --- Modern Item Components (1.20.5+) ---
     // In region files, these are often nested within an item's 'components' tag
-    +RightPattern("#components>#minecraft:custom_name")
-    +RegexPattern("""#components>#minecraft:lore>\d+$""")
+    +RightPattern("#components>#minecraft:custom_name(>#raw)?$")
+    +RegexPattern("""#components>#minecraft:lore>\d+(>#raw)?$""")
+    +RegexPattern("""#components>#minecraft:written_book_content>#(pages>\d+|title|author)(>#raw)?$""")
+    +RegexPattern("""#components>#minecraft:writable_book_content>#pages>\d+(>#raw)?$""")
+
 
     // --- Written Books (Nested in Item Tags) ---
-    +RightPattern("#Book>#tag>#pages")                // Book page content
-    +RightPattern("#Book>#tag>#title")                // Book title
-    +RightPattern("#Book>#tag>#author")               // Book author
-    +RightPattern("#Book>#tag>#filtered_pages")       // Censored/Filtered pages
-    +RightPattern("#Book>#tag>#filtered_title")       // Censored/Filtered title
-
+    listOf(
+        "pages",                // Book page content
+        "title",                // Book title
+        "author",               // Book author
+        "filtered_pages",       // Censored/Filtered pages
+        "filtered_title",       // Censored/Filtered title
+    ).forEach {
+        +RightPattern("#Book>#tag>#$it")
+    }
     // --- Entities (Mobs, Armor Stands, etc.) ---
     // Matches CustomName for all entities stored in the chunk
     +RegexPattern("""^>#>#Entities>\d+>#CustomName$""")
 
     // --- Block Entities (Signs, Containers, Spawners) ---
     // 1. Signs (Front & Back)
-    listOf("front_text", "back_text").forEach { side ->
-        +RegexPattern("^>#>#block_entities>\\d+>#$side>#messages$")
-        +RegexPattern("^>#>#block_entities>\\d+>#$side>#filtered_messages$")
-    }
+    +RegexPattern("""^>#>#block_entities>\d+>#(front|back)_text>#(filtered_)?messages>\d+(>#raw)?$""")
 
     // 2. Container Names (Chests, Shulker Boxes, Hoppers)
     // These use 'CustomName' at the block entity root
