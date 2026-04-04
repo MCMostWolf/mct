@@ -6,6 +6,7 @@ import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.command.main
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.versionOption
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import mct.MCTError
 import mct.cli.cmd.Datapack
@@ -18,9 +19,9 @@ val PrettyJson = Json(MCTJson) {
     prettyPrintIndent = "  "
 }
 
-suspend fun main(args: Array<String>) = MCT()
-    .main(args)
-
+fun main(args: Array<String>) = runBlocking {
+    MCT().main(args)
+}
 
 class MCT : SuspendingCliktCommand("MCT") {
     init {

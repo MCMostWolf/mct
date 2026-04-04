@@ -2,6 +2,7 @@ package mct.cli.cmd
 
 import arrow.core.raise.Raise
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
@@ -27,13 +28,16 @@ class Kit : SuspendingCliktCommand(name = "kit") {
         subcommands(ExportSnbt(), Ciallo())
     }
 
-    override suspend fun run() {
-        echo("Some operation about region.")
-    }
+    override fun help(context: Context) = "Some helpful tool"
+
+    override suspend fun run() = Unit
 }
 
-private class ExportSnbt : WorkspaceCommand(name = "export-snbt") {
-    val output by option().path().required()
+private class ExportSnbt : WorkspaceCommand(
+    name = "export-snbt",
+    help = "A tool helping you extract all nbt from region files"
+) {
+    val output by option("--output", "-o", help = "The dir where the extracted snbt will be placed").path().required()
 
     context(_: Raise<MCTError>, fs: FileSystem)
     override suspend fun App() {
@@ -42,10 +46,18 @@ private class ExportSnbt : WorkspaceCommand(name = "export-snbt") {
 }
 
 private class Ciallo : BaseCommand(name = "ciallo") {
-    val input by option("--input", "-i").path().required()
-    val output by option("--output", "-o").path().required()
-    val replacement by option("--replacement", "-r").default("{CIALLO powered by MCT}")
-    val kind by option().choice("datapack", "region").required()
+    val input by option(
+        "--input",
+        "-i",
+        help = "The path to what you want to replace extractions with a specified string"
+    ).path().required()
+    val output by option("--output", "-o", help = "The output path").path().required()
+    val replacement by option(
+        "--replacement",
+        "-r",
+        help = "The replacement which will replace extraction"
+    ).default("{CIALLO powered by MCT}")
+    val kind by option(help = "The kind of extractions").choice("datapack", "region").required()
 
     context(_: Raise<MCTError>, fs: FileSystem)
     override suspend fun App() {

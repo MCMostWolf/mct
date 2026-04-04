@@ -30,10 +30,10 @@ kotlin {
             nodejs { testTask { useMocha() } }
 
         }
-        wasmJs {
-            browser()
-            nodejs()
-        }
+//        wasmJs {
+//            browser()
+//            nodejs()
+//        }
         mingwX64()
         linuxX64()
 

@@ -4,6 +4,7 @@ import arrow.core.raise.Raise
 import arrow.core.raise.either
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.CliktError
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.groups.default
 import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
 import com.github.ajalt.clikt.parameters.options.*
@@ -15,8 +16,11 @@ import mct.MCTWorkspace
 import okio.FileSystem
 
 abstract class BaseCommand(
-    name: String? = null
+    val name: String? = null,
+    private val help: String? = null,
 ) : SuspendingCliktCommand(name) {
+    override fun help(context: Context): String = help ?: super.help(context)
+
     val loggerLevels by mutuallyExclusiveOptions(
         option("--logger-level", "-l").choice(
             "Info",
@@ -31,7 +35,7 @@ abstract class BaseCommand(
 
     val env: Env by lazy {
         Env(
-            FileSystem.SYSTEM,
+            SystemFileSystem,
             ColorTerminalLogger(loggerLevels)
         )
     }
@@ -51,9 +55,10 @@ abstract class BaseCommand(
 }
 
 abstract class WorkspaceCommand(
-    name: String? = null
+    name: String? = null,
+    help: String? = null,
 ) : BaseCommand(name) {
-    val input by option("--input", "-i").path().required()
+    val input by option("--input", "-i", help = "The path to your map where there should be level.dat").path().required()
 
     val workspace by lazy { MCTWorkspace(input, env) }
 }

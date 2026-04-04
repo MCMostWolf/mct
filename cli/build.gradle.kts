@@ -2,6 +2,7 @@
 
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.KotlinNativeBinaryContainer
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -22,6 +23,19 @@ kotlin {
         mainRun {
             mainClass.set("mct.cli.MainKt")
         }
+    }
+
+    val exeConfigure: KotlinNativeBinaryContainer.() -> Unit = {
+        executable {
+            baseName = "mct"
+            entryPoint = "mct.cli.main"
+        }
+    }
+    mingwX64 {
+        binaries(exeConfigure)
+    }
+    linuxX64 {
+        binaries(exeConfigure)
     }
 
     tasks.named<Jar>("jvmJar") {

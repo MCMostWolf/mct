@@ -8,16 +8,23 @@ import kotlinx.coroutines.flow.*
 import mct.DatapackExtractionGroup
 import mct.Env
 import mct.MCTWorkspace
+import mct.dp.mcfunction.ExtractPattern
 import mct.dp.mcfunction.MCFunctionExtractor
 import mct.dp.mcjson.MCJsonExtractor
+import mct.pointer.DataPointerPattern
 import mct.util.io.*
 import okio.FileSystem
 import okio.Path
+import mct.dp.mcfunction.BuiltinPatterns as MCFBuiltinPatterns
+import mct.dp.mcjson.BuiltinPatterns as MCJsonBuiltinPatterns
 
-fun MCTWorkspace.extractFromDatapack(): Flow<DatapackExtractionGroup> {
+fun MCTWorkspace.extractFromDatapack(
+    mcfPatterns: Set<ExtractPattern> = emptySet(),
+    mcjPatterns: Set<DataPointerPattern> = emptySet()
+): Flow<DatapackExtractionGroup> {
     val extractors = listOf(
-        MCFunctionExtractor(),
-        MCJsonExtractor(),
+        MCFunctionExtractor(MCFBuiltinPatterns + mcfPatterns),
+        MCJsonExtractor(MCJsonBuiltinPatterns + mcjPatterns),
     )
 
     return fs.list(datapackDir)

@@ -3,7 +3,9 @@ package mct.cli.cmd
 
 import arrow.core.raise.Raise
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
+import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import kotlinx.coroutines.flow.toList
@@ -14,6 +16,7 @@ import mct.cli.PrettyJson
 import mct.cli.WorkspaceCommand
 import mct.cli.jsonFile
 import mct.cli.path
+import mct.pointer.DataPointerPattern
 import mct.region.backfillRegion
 import mct.region.extractFromRegion
 import mct.util.io.writeText
@@ -24,17 +27,17 @@ class Region : SuspendingCliktCommand(name = "region") {
         subcommands(RegionExtract(), RegionBackfill())
     }
 
-    override suspend fun run() {
-        echo("Some operation about region.")
-    }
+    override suspend fun run() = Unit
+    override fun help(context: Context) = "Region operators"
 }
 
 private class RegionExtract : WorkspaceCommand(name = "extract") {
     val output by option().path().required()
+    val patterns by option().jsonFile<Set<DataPointerPattern>>().default(emptySet())
 
     context(_: Raise<MCTError>, fs: FileSystem)
     override suspend fun App() {
-        val extractions: List<RegionExtractionGroup> = workspace.extractFromRegion().toList()
+        val extractions: List<RegionExtractionGroup> = workspace.extractFromRegion(patterns).toList()
 
         val result = PrettyJson.encodeToString(extractions)
         output.writeText(result)

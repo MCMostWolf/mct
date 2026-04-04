@@ -16,9 +16,10 @@ import net.benwoodworth.knbt.NbtTag
 
 context(_: Raise<ExtractError>)
 fun MCTWorkspace.extractFromRegion(
-    patterns: Set<DataPointerPattern> = BuiltinPatterns
-): Flow<RegionExtractionGroup> =
-    dimensions.values.asFlow().flatMapMerge { dimension ->
+    patterns: Set<DataPointerPattern> = emptySet()
+): Flow<RegionExtractionGroup> {
+    val patterns = BuiltinPatterns + patterns
+    return dimensions.values.asFlow().flatMapMerge { dimension ->
         flowOf(
             dimension.regionRawMgr to ChunkDataKind.Terrain,
             dimension.poiRawMgr to ChunkDataKind.Poi,
@@ -53,6 +54,7 @@ fun MCTWorkspace.extractFromRegion(
                 }
             }
     }
+}
 
 
 internal fun NbtTag.extractTexts(): Sequence<DataPointerWithValue> = when (this) {
