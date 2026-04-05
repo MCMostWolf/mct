@@ -17,7 +17,7 @@ import okio.fakefilesystem.FakeFileSystem
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
-private const val BUFFER_SIZE = 0x20000 // 128KiB
+internal const val BUFFER_SIZE = 0x20000 // 128KiB
 
 @Suppress("ObjectPropertyName")
 private val _ROOT = "/".toPath()

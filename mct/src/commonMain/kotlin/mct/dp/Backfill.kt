@@ -1,5 +1,7 @@
 package mct.dp
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
@@ -27,7 +29,7 @@ suspend fun MCTWorkspace.backfillDatapack(replacementGroups: Iterable<DatapackRe
     replacementGroups.groupBy {
         datapackDir / it.source
     }.forEach { (dbPath, replacementGroups) ->
-        launch {
+        launch(Dispatchers.IO) {
             val m = fs.metadata(dbPath)
             val sfs = if (m.isDirectory) fs.newRelativeFS(dbPath) else fs.openZipReadWrite(dbPath)
             sfs.useAsync { sfs ->

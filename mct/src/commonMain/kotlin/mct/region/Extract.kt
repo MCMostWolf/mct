@@ -1,6 +1,8 @@
 package mct.region
 
 import arrow.core.raise.Raise
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.*
 import mct.MCTWorkspace
 import mct.RegionExtraction
@@ -24,7 +26,7 @@ fun MCTWorkspace.extractFromRegion(
         flowOf(
             dimension.regionRawMgr to ChunkDataKind.Terrain,
             dimension.poiRawMgr to ChunkDataKind.Poi,
-            dimension.entitiesRawMgr to ChunkDataKind.Entities,
+            dimension.entitiesRawMgr to ChunkDataKind.Entities
         )
             .filter { (manager, _) -> manager != null }
             .flatMapMerge { (manager, kind) ->
@@ -52,9 +54,10 @@ fun MCTWorkspace.extractFromRegion(
                                 ?: return@flatMapMerge emptyFlow()
                         )
                     )
-                }
+                }.flowOn(Dispatchers.IO)
             }
-    }
+            .flowOn(Dispatchers.IO)
+    }.flowOn(Dispatchers.IO)
 }
 
 internal data class PointerWithExtension(

@@ -20,17 +20,17 @@ kotlin {
             }
         }
 
-        js(IR) {
-            browser {
-                testTask {
-                    useKarma {
-                        useChromeHeadless()
-                    }
-                }
-            }
-            nodejs { testTask { useMocha() } }
-
-        }
+//        js(IR) {
+//            browser {
+//                testTask {
+//                    useKarma {
+//                        useChromeHeadless()
+//                    }
+//                }
+//            }
+//            nodejs { testTask { useMocha() } }
+//
+//        }
 //        wasmJs {
 //            browser()
 //            nodejs()

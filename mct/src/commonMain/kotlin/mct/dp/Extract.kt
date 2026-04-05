@@ -4,6 +4,8 @@ import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.context.either
 import arrow.core.raise.nullable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.*
 import mct.DatapackExtractionGroup
 import mct.Env
@@ -64,7 +66,7 @@ fun MCTWorkspace.extractFromDatapack(
                         .collect { emit(it) }
                 }
             }
-        }
+        }.flowOn(Dispatchers.IO)
 }
 
 

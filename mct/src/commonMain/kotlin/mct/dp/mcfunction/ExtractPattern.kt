@@ -2,7 +2,6 @@ package mct.dp.mcfunction
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
@@ -150,7 +149,6 @@ fun interface PostCondition {
         @Serializable
         @SerialName("regex")
         data class MatchRegex(val regex: String) : PostCondition {
-            @Transient
             private val _regex by lazy { regex.toRegex() }
             override fun matches(command: MCCommand, arg: MCCommand.Arg): Boolean =
                 _regex.containsMatchIn(arg.content)

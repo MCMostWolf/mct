@@ -3,6 +3,8 @@ package mct.region
 import arrow.core.raise.Raise
 import arrow.core.raise.context.raise
 import arrow.core.raise.recover
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
@@ -29,20 +31,18 @@ suspend fun MCTWorkspace.backfillRegion(replacementGroups: Iterable<RegionReplac
             ChunkDataKind.Poi -> dimension.poiRawMgr
         }
         if (mgr == null) return@forEach
-        launch {
+        launch(Dispatchers.IO) {
             recover({
-                launch {
-                    mgr.modify(group.coord) { region ->
-                        val chunks = region.chunks.toMutableList()
-                        group.replacements.groupBy { it.index }
-                            .forEach { (index, replacements) ->
-                                val replacementGroups =
-                                    replacements.map { it.pointer to it.replacement }.toReplacementGroups()
-                                val chunk = chunks[index] ?: return@forEach
-                                chunks[index] = chunk.modify { it.transform(replacementGroups) }
-                            }
-                        region.modifyChunks(chunks)
-                    }
+                mgr.modify(group.coord) { region ->
+                    val chunks = region.chunks.toMutableList()
+                    group.replacements.groupBy { it.index }
+                        .forEach { (index, replacements) ->
+                            val replacementGroups =
+                                replacements.map { it.pointer to it.replacement }.toReplacementGroups()
+                            val chunk = chunks[index] ?: return@forEach
+                            chunks[index] = chunk.modify { it.transform(replacementGroups) }
+                        }
+                    region.modifyChunks(chunks)
                 }
             }, {
                 raise(BackfillError.Internal(it))
@@ -66,7 +66,7 @@ private fun NbtTag.transform(
     }
 
     is NbtCompound -> {
-        pointers.filterIsInstance<DataPointerReplacementGroup.Terminator>().firstOrNull()?.let {terminator ->
+        pointers.filterIsInstance<DataPointerReplacementGroup.Terminator>().firstOrNull()?.let { terminator ->
             return Snbt.decodeFromString(terminator.replacement)
         }
 

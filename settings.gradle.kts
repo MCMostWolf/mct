@@ -25,4 +25,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "mct"
 
-include("mct", "cli", "web")
+include(
+    "mct",
+    "cli",
+//    "web"
+)
