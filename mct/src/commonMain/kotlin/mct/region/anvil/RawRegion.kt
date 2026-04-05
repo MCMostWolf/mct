@@ -112,7 +112,7 @@ class RawRegion internal constructor(
         }
 
         var currentSector = 2u // header
-        val newTimestamps = UIntArray(CHUNK_COUNT) { 0u }
+        val newTimestamps = timestamps.raw.copyOf()
         val currentTimestamps = Clock.System.now().epochSeconds.toUInt()
         val newOffsets = Array(CHUNK_COUNT) { index ->
             val chunk = modified[index] ?: return@Array ChunkOffset.EMPTY
