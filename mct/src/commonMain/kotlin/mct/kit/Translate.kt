@@ -1,15 +1,33 @@
 package mct.kit
 
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import mct.*
+import mct.serializer.MCTJson
+import mct.serializer.Snbt
+import mct.text.TextCompound
 import kotlin.jvm.JvmName
 
 
 typealias TranslationMapping = Map<String, String>
-typealias TranslationPool = List<String>
+typealias TranslationPool = Set<String>
+
+private fun trySimply(text: String): String = runCatching {
+    val tc = MCTJson.decodeFromString<TextCompound>(text)
+    MCTJson.encodeToString(tc)
+}.getOrElse {
+    runCatching {
+        val tc = Snbt.decodeFromString<TextCompound>(text)
+        Snbt.encodeToString(tc)
+    }.getOrElse {
+        text
+    }
+}
 
 
-fun List<ExtractionGroup<*>>.exportIntoPool(): List<String> =
-    flatMap { it.extractions.map { it.content } }.distinct()
+fun List<ExtractionGroup<*>>.exportIntoPool(simply: Boolean): TranslationPool =
+    flatMapTo(mutableSetOf()) { it.extractions.map { if (!simply) it.content else trySimply(it.content) } }
+
 
 fun List<ExtractionGroup<*>>.replace(mapping: TranslationMapping): List<ReplacementGroup<*>> =
     map {

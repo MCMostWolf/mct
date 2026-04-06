@@ -5,17 +5,13 @@ import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.types.choice
-import mct.DatapackExtractionGroup
-import mct.MCTError
-import mct.RegionExtractionGroup
-import mct.cli.BaseCommand
-import mct.cli.WorkspaceCommand
-import mct.cli.path
-import mct.kit.exportRegionSnbt
-import mct.kit.replaceSimply
+import mct.*
+import mct.cli.*
+import mct.kit.*
 import mct.serializer.MCTJson
 import mct.util.io.readText
 import mct.util.io.writeText
@@ -25,13 +21,82 @@ import okio.FileSystem
 
 class Kit : SuspendingCliktCommand(name = "kit") {
     init {
-        subcommands(ExportSnbt(), Ciallo())
+        subcommands(ExportSnbt(), Ciallo(), TextPool())
     }
 
     override fun help(context: Context) = "Some helpful tool"
 
     override suspend fun run() = Unit
 }
+
+private class TextPool : BaseCommand(
+    name = "text-pool",
+    help = "A tool helping you flatten and unflatten these nested extract"
+) {
+    init {
+        subcommands(Flatten(), Unflatten())
+    }
+
+
+    private class Flatten : BaseCommand(
+        name = "flatten",
+        help = "Flatten extraction groups into a translation pool"
+    ) {
+        val input by option("--input", "-i").path().required()
+        val output by option("--output", "-o").path().required()
+        val kind by option(help = "The kind of extractions").choice("datapack", "region").required()
+        val simply by option("--simply").flag()
+
+        context(_: Raise<MCTError>, fs: FileSystem)
+        override suspend fun App() {
+            val groups = when (kind) {
+                "datapack" -> input.jsonFile<List<DatapackExtractionGroup>>()
+                "region" -> input.jsonFile<List<RegionExtractionGroup>>()
+                else -> unreachable
+            }
+
+            val pool: TranslationPool = groups.exportIntoPool(simply)
+
+            output.writeText(
+                PrettyJson.encodeToString(pool)
+            )
+        }
+    }
+
+
+    private class Unflatten : BaseCommand(
+        name = "unflatten",
+        help = "Apply translation mapping back into extraction groups"
+    ) {
+
+        val input by option("--input", "-i").path().required()
+        val mapping by option("--mapping", "-m").path().required()
+        val output by option("--output", "-o").path().required()
+        val kind by option(help = "The kind of extractions").choice("datapack", "region").required()
+
+        context(_: Raise<MCTError>, fs: FileSystem)
+        override suspend fun App() {
+            val groups = when (kind) {
+                "datapack" -> input.jsonFile<List<DatapackExtractionGroup>>()
+                "region" -> input.jsonFile<List<RegionExtractionGroup>>()
+                else -> unreachable
+            }
+
+            val map: TranslationMapping = mapping.jsonFile()
+
+            @Suppress("UNCHECKED_CAST")
+            val result: List<ReplacementGroup<*>> = groups.replace(map)
+
+            @Suppress("UNCHECKED_CAST")
+            when (kind) {
+                "datapack" -> PrettyJson.encodeToString(result as List<DatapackReplacementGroup>)
+                "region" -> PrettyJson.encodeToString(result as List<RegionReplacementGroup>)
+                else -> unreachable
+            }.let { output.writeText(it) }
+        }
+    }
+}
+
 
 private class ExportSnbt : WorkspaceCommand(
     name = "export-snbt",

@@ -60,7 +60,7 @@ abstract class BaseCommand(
     }
 
     context(_: Raise<MCTError>, fs: FileSystem)
-    protected abstract suspend fun App()
+    protected open suspend fun App() = Unit
 }
 
 abstract class WorkspaceCommand(
