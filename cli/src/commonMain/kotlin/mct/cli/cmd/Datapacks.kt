@@ -16,11 +16,14 @@ import mct.cli.WorkspaceCommand
 import mct.cli.jsonFile
 import mct.cli.path
 import mct.dp.backfillDatapack
+import mct.dp.compile
 import mct.dp.extractFromDatapack
 import mct.dp.mcfunction.ExtractPattern
 import mct.pointer.DataPointerPattern
 import mct.util.io.writeText
 import okio.FileSystem
+import mct.dp.mcfunction.BuiltinPatterns as MCFBuiltinPatterns
+import mct.dp.mcjson.BuiltinPatterns as MCJBuiltinPatterns
 
 class Datapack : SuspendingCliktCommand(name = "datapack") {
     override suspend fun run() = Unit
@@ -49,11 +52,12 @@ private class ExtractDatapack : WorkspaceCommand(name = "extract") {
 
     context(_: Raise<MCTError>, fs: FileSystem)
     override suspend fun App() {
-        val mcfPatterns =  mcfPatternsPath.jsonFile<List<ExtractPattern>>(emptyList())
-        val mcjPatterns = if (disableMCJFilter) null else mcjPatternsPath.jsonFile<List<DataPointerPattern>>(emptyList())
+        val mcfPatterns = mcfPatternsPath?.jsonFile<List<ExtractPattern>>()
+        val mcjPatterns =
+            if (disableMCJFilter) null else mcjPatternsPath.jsonFile<List<DataPointerPattern>>(MCJBuiltinPatterns)
 
         val extractions: List<DatapackExtractionGroup> =
-            workspace.extractFromDatapack(mcfPatterns, mcjPatterns).toList()
+            workspace.extractFromDatapack(mcfPatterns?.compile() ?: MCFBuiltinPatterns, mcjPatterns).toList()
         val result = PrettyJson.encodeToString(extractions)
         output.writeText(result)
     }

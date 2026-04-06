@@ -17,6 +17,7 @@ import mct.cli.WorkspaceCommand
 import mct.cli.jsonFile
 import mct.cli.path
 import mct.pointer.DataPointerPattern
+import mct.region.BuiltinPatterns
 import mct.region.backfillRegion
 import mct.region.extractFromRegion
 import mct.util.io.writeText
@@ -39,7 +40,7 @@ private class RegionExtract : WorkspaceCommand(name = "extract") {
 
     context(_: Raise<MCTError>, fs: FileSystem)
     override suspend fun App() {
-        val patterns = if (disableFilter) null else patternsPath.jsonFile<List<DataPointerPattern>>(emptyList())
+        val patterns = if (disableFilter) null else patternsPath.jsonFile<List<DataPointerPattern>>(BuiltinPatterns)
         val extractions: List<RegionExtractionGroup> = workspace.extractFromRegion(patterns).toList()
 
         val result = PrettyJson.encodeToString(extractions)
