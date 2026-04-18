@@ -5,6 +5,7 @@ import arrow.core.raise.context.raise
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
 import mct.DatapackExtractionGroup
+import mct.FormatKind
 import mct.dp.Extractor
 import mct.dp.MCJsonExtractError
 import mct.pointer.*
@@ -66,7 +67,7 @@ internal fun JsonElement.extractTextMCJ(): Sequence<DataPointerWithValue> = when
         }
     }
 
-    is JsonPrimitive if isString -> sequenceOf(DataPointer.Terminator to content)
+    is JsonPrimitive if isString -> sequenceOf(DataPointerWithValue(DataPointer.Terminator, content, FormatKind.Json))
     JsonNull -> emptySequence()
     else -> emptySequence()
 }

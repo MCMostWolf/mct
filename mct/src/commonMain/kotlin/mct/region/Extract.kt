@@ -4,6 +4,7 @@ import arrow.core.raise.Raise
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.*
+import mct.FormatKind
 import mct.MCTWorkspace
 import mct.RegionExtraction
 import mct.RegionExtractionGroup
@@ -38,11 +39,11 @@ fun MCTWorkspace.extractFromRegion(
                         .flatMap { chunk ->
                             chunk.data.extractTexts()
                                 .filterPointer(patterns)
-                                .map { (pointer, content, isStoredViaCompound) ->
+                                .map { (pointer, content, kind) ->
                                     RegionExtraction(
                                         index = chunk.index,
                                         pointer = pointer,
-                                        isStoredViaCompound = isStoredViaCompound,
+                                        kind = kind,
                                         content = content
                                     )
                                 }
@@ -65,7 +66,7 @@ fun MCTWorkspace.extractFromRegion(
 internal data class PointerWithExtension(
     val pointer: DataPointer,
     val content: String,
-    val isStoredViaCompound: Boolean,
+    val kind: FormatKind = FormatKind.Json,
 )
 
 private inline fun Sequence<PointerWithExtension>.filterPointer(patterns: Iterable<DataPointerPattern>?) =
@@ -80,7 +81,7 @@ internal fun NbtTag.extractTexts(): Sequence<PointerWithExtension> = when (this)
 
     is NbtCompound -> {
         if (isTextCompound()) {
-            sequenceOf(PointerWithExtension(DataPointer.Terminator, toSnbt(), true))
+            sequenceOf(PointerWithExtension(DataPointer.Terminator, toSnbt(), FormatKind.Snbt))
         } else
             asSequence().flatMap { (key, value) ->
                 value.extractTexts().map {
@@ -90,7 +91,7 @@ internal fun NbtTag.extractTexts(): Sequence<PointerWithExtension> = when (this)
     }
 
     is NbtString -> {
-        sequenceOf(PointerWithExtension(DataPointer.Terminator, value, false))
+        sequenceOf(PointerWithExtension(DataPointer.Terminator, value))
     }
 
     else -> emptySequence()

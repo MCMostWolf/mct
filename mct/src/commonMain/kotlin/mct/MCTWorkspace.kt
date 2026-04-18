@@ -10,11 +10,16 @@ import net.benwoodworth.knbt.decodeFromSource
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
+import okio.SYSTEM
 
 data class Env(
-    val fs: FileSystem,
+    val fs: FileSystem = FileSystem.SYSTEM,
     val logger: Logger = Logger.None
-)
+) {
+    companion object {
+        val Default = Env()
+    }
+}
 
 sealed interface OpenError : MCTError {
     data class UnvalidatedDir(val dir: Path) : OpenError {

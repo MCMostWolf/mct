@@ -8,9 +8,10 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import kotlinx.coroutines.flow.toList
-import mct.DatapackExtractionGroup
 import mct.DatapackReplacementGroup
+import mct.ExtractionGroup
 import mct.MCTError
+import mct.ReplacementGroup
 import mct.cli.WorkspaceCommand
 import mct.cli.jsonFile
 import mct.cli.path
@@ -56,7 +57,7 @@ private class ExtractDatapack : WorkspaceCommand(name = "extract") {
         val mcjPatterns =
             if (disableMCJFilter) null else mcjPatternsPath.jsonFile<List<DataPointerPattern>>(MCJBuiltinPatterns)
 
-        val extractions: List<DatapackExtractionGroup> =
+        val extractions: List<ExtractionGroup> =
             workspace.extractFromDatapackRaw(mcfPatterns?.compile() ?: MCFBuiltinPatterns, mcjPatterns).toList()
         val result = PrettyJson.encodeToString(extractions)
         output.writeText(result)
@@ -69,7 +70,8 @@ private class BackfillDatapack : WorkspaceCommand(name = "backfill") {
 
     context(_: Raise<MCTError>, fs: FileSystem)
     override suspend fun App() {
-        val replacementGroups = replacementGroupsPath.jsonFile<List<DatapackReplacementGroup>>()
+        val replacementGroups =
+            replacementGroupsPath.jsonFile<List<ReplacementGroup>>().filterIsInstance<DatapackReplacementGroup>()
         workspace.backfillDatapack(replacementGroups)
     }
 }

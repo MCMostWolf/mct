@@ -8,11 +8,12 @@ import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.LoggingConfig
 import com.aallam.openai.client.OpenAI
 import com.aallam.openai.client.OpenAIHost
+import io.ktor.client.plugins.logging.*
+import korlibs.math.toIntFloor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import mct.Env
 
 private const val PROMPT = """You are a professional translator specialized in structured data.
 
@@ -139,36 +140,35 @@ Produce a natural Chinese translation while preserving structure and style, allo
 
 private const val TOKEN_COUNT_THRESHOLD = 50 shl 10
 
-@Serializable
-data class Term(val source: String, val target: String, val type: TermType)
-
-@Serializable
-enum class TermType {
-    @SerialName("name")
-    Name,
-
-    @SerialName("term")
-    Term
-}
-
 private fun Iterable<Term>.render() = joinToString("\n") { (source, target, _) ->
     "${source.trim()} => ${target.trim()}"
 }
 
 private val REGEX_LLM_OUTPUT =
-    """^-- MCT-CLI:TRANSLATED --\n([\S\s]*?)\n-- MCT-CLI:TERMS --\n([\S\s]*?)\n-- MCT-CLI:END --\s*$""".toRegex()
+    """(?s)^-- MCT-CLI:TRANSLATED --\n(.*?)\n-- MCT-CLI:TERMS --\n(.*?)\n-- MCT-CLI:END --\s*$""".toRegex()
 
 class OpenAITranslator(
-    private val apiUrl: String,
+    private val apiUrl: String?,
     private val token: String,
     private val model: String,
+    private val defaultTerms: TermTable = emptySet(),
+    private val env: Env = Env.Default
 ) : Translator {
     private val client = OpenAI(
         token,
-        host = OpenAIHost(apiUrl),
-        logging = LoggingConfig(logLevel = LogLevel.All), httpClientConfig = {
+        host = apiUrl?.let(::OpenAIHost) ?: OpenAIHost.OpenAI,
+        logging = LoggingConfig(
+            logLevel = LogLevel.All,
+        ), httpClientConfig = {
             engine {
                 dispatcher = Dispatchers.IO // https://github.com/aallam/openai-kotlin/issues/461
+            }
+            install(Logging) {
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        env.logger.debug { message }
+                    }
+                }
             }
         }
     )
@@ -191,10 +191,10 @@ class OpenAITranslator(
 
     override suspend fun translate(sources: List<String>): TranslateResponse {
         var tokenCount = 0
-        val (terms, translated) = sequence {
+        val chunk = sequence {
             val tmp = mutableListOf<String>()
             sources.forEach { source ->
-                val approximateTokenCount = source.length + 1
+                val approximateTokenCount = calculateToken(source.length + 1)
                 val isThresholdOver = tokenCount + approximateTokenCount >= TOKEN_COUNT_THRESHOLD
                 if (isThresholdOver) {
                     require(tmp.isNotEmpty()) {
@@ -211,7 +211,9 @@ class OpenAITranslator(
             if (tmp.isNotEmpty()) {
                 yield(tmp)
             }
-        }.fold(emptySet<Term>() to emptyList<String>()) { (terms, translated), chunk ->
+        }.withIndex().toList()
+        val chunkCount = chunk.size
+        val (terms, translated) = chunk.fold(defaultTerms to emptyList<String>()) { (terms, translated), (index, chunk) ->
             val message = buildString {
                 if (terms.isNotEmpty()) {
                     append(terms.render())
@@ -221,8 +223,11 @@ class OpenAITranslator(
                 append("-- MCT-CLI:START --")
                 chunk.map { it.replace("\n", "\\n") }.forEach { appendLine(it) }
             }
+            env.logger.info { "Handling $index (total ${chunkCount - 1})" }
             val completion = chatCompletion(message)
             val (appendTerms, appendedTranslated) = parseLLMResponse(completion.choices.first().message.content!!)
+            env.logger.info { "Handled $index (total ${chunkCount - 1})" }
+            env.logger.debug { chunk.zip(appendedTranslated).joinToString("\n") { (x, y) -> "Translate $x to $y" } }
             (terms + appendTerms) to (translated + appendedTranslated)
         }
         return TranslateResponse(translated, terms)
@@ -231,9 +236,11 @@ class OpenAITranslator(
     override fun toString() = "OpenAITranslator($model)"
 }
 
-internal fun parseLLMResponse(content: String): Pair<Set<Term>, List<String>> {
+internal fun parseLLMResponse(content: String): Pair<TermTable, List<String>> {
     val (appendedTranslated, appendTermsStr) = REGEX_LLM_OUTPUT.matchEntire(content)?.destructured
         ?: error("LLM responses invalidly")
-    val appendTerms = Json.decodeFromString<Set<Term>>(appendTermsStr)
+    val appendTerms = Json.decodeFromString<TermTable>(appendTermsStr)
     return appendTerms to appendedTranslated.lines()
 }
+
+private fun calculateToken(strSize: Int): Int = (strSize / 1.5).toIntFloor()

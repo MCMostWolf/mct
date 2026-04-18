@@ -11,6 +11,7 @@ import kotlinx.serialization.decodeFromString
 import mct.MCTWorkspace
 import mct.RegionReplacementGroup
 import mct.pointer.DataPointerReplacementGroup
+import mct.pointer.DataPointerWithValue
 import mct.pointer.toReplacementGroups
 import mct.region.anvil.model.ChunkDataKind
 import mct.serializer.Snbt
@@ -38,7 +39,7 @@ suspend fun MCTWorkspace.backfillRegion(replacementGroups: Iterable<RegionReplac
                     group.replacements.groupBy { it.index }
                         .forEach { (index, replacements) ->
                             val replacementGroups =
-                                replacements.map { it.pointer to it.replacement }.toReplacementGroups()
+                                replacements.map { DataPointerWithValue(it.pointer,  it.replacement, it.kind) }.toReplacementGroups()
                             val chunk = chunks[index] ?: return@forEach
                             chunks[index] = chunk.modify { it.transform(replacementGroups) }
                         }

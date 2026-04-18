@@ -12,6 +12,7 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import mct.FormatKind
 import mct.MCTError
 
 // {"abc": [{"abc": "def"}]}
@@ -27,7 +28,7 @@ sealed interface DataPointer : Comparable<DataPointer> {
     companion object
 }
 
-typealias DataPointerWithValue = Pair<DataPointer, String>
+data class DataPointerWithValue(val pointer: DataPointer, val value: String, val kind: FormatKind = FormatKind.Json)
 
 inline fun Sequence<DataPointerWithValue>.filterPointer(pattern: DataPointerPattern) =
     filter { (ptr, _) -> pattern.match(ptr) }
@@ -46,10 +47,10 @@ inline fun DataPointer.markArray(point: Int) =
     DataPointer.List(point, this)
 
 inline fun DataPointerWithValue.markMap(point: String) =
-    DataPointer.Map(point, first) to second
+    copy(pointer = DataPointer.Map(point, pointer))
 
 inline fun DataPointerWithValue.markArray(point: Int) =
-    DataPointer.List(point, first) to second
+    copy(pointer = DataPointer.List(point, pointer))
 
 internal object DataPointerSerializer : KSerializer<DataPointer> {
     val delegatedSerializer = String.serializer()

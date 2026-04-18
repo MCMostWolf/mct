@@ -7,22 +7,34 @@ import mct.region.anvil.Coord
 import mct.region.anvil.model.ChunkDataKind
 import mct.serializer.IntRangeSerializable
 
-sealed interface ExtractionGroup<E : Extraction> {
-    val extractions: List<E>
+@Serializable
+sealed interface ExtractionGroup {
+    val extractions: List<Extraction>
 }
 
+@Serializable
 sealed interface Extraction {
     val content: String
 }
 
-sealed interface ReplacementGroup<E : Replacement> {
-    val replacements: List<E>
+@Serializable
+sealed interface ReplacementGroup {
+    val replacements: List<Replacement>
 }
 
+@Serializable
 sealed interface Replacement {
     val replacement: String
 }
 
+@Serializable
+enum class FormatKind {
+    @SerialName("json")
+    Json, // includes plain text without quote
+
+    @SerialName("snbt")
+    Snbt
+}
 
 /**
  * Data extracted from a Minecraft Datapack (zip or folder).
@@ -35,7 +47,7 @@ data class DatapackExtractionGroup(
     val source: String,
     val path: String,
     override val extractions: List<DatapackExtraction>,
-) : ExtractionGroup<DatapackExtraction>
+) : ExtractionGroup
 
 /**
  * Data extracted from Minecraft Region files (.mca).
@@ -50,7 +62,7 @@ data class RegionExtractionGroup(
     val kind: ChunkDataKind,
     val coord: Coord,
     override val extractions: List<RegionExtraction>,
-) : ExtractionGroup<RegionExtraction>
+) : ExtractionGroup
 
 
 @Serializable
@@ -84,18 +96,18 @@ sealed interface DatapackExtraction : Extraction {
  * An extraction from an NBT structure within a region file.
  * @property index The linear index of the chunk within the region (0-1023).
  * @property pointer The NBT path/pointer to the specific tag.
- * @property isStoredViaCompound Whether the content was stored in a NbtCompound
- * @property content The extracted NBT pointer represented as an SNBT string if [isStoredViaCompound]; otherwise as JSON.
+ * @property kind which kind format the content was stored via
+ * @property content The extracted NBT pointer represented as an SNBT string if [kind] is snbt; otherwise as JSON.
  */
+
 @Serializable
 @SerialName("Region")
 data class RegionExtraction(
     val index: Int,
     val pointer: DataPointer,
-    val isStoredViaCompound: Boolean = false,
+    val kind: FormatKind = FormatKind.Json,
     override val content: String,
 ) : Extraction
-
 
 /**
  * Replacements to be applied to a specific file in a datapack.
@@ -108,7 +120,7 @@ data class DatapackReplacementGroup(
     val source: String,
     val path: String,
     override val replacements: List<DatapackReplacement>,
-) : ReplacementGroup<DatapackReplacement>
+) : ReplacementGroup
 
 
 /**
@@ -124,7 +136,7 @@ data class RegionReplacementGroup(
     val kind: ChunkDataKind,
     val coord: Coord,
     override val replacements: List<RegionReplacement>,
-) : ReplacementGroup<RegionReplacement>
+) : ReplacementGroup
 
 
 @Serializable
@@ -167,6 +179,6 @@ sealed interface DatapackReplacement : Replacement {
 data class RegionReplacement(
     val index: Int,
     val pointer: DataPointer,
-    val isStoredViaCompound: Boolean = false,
+    val kind: FormatKind = FormatKind.Json,
     override val replacement: String,
 ) : Replacement

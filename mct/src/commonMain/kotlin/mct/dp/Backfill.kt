@@ -10,11 +10,13 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import mct.DatapackReplacement
 import mct.DatapackReplacementGroup
+import mct.FormatKind
 import mct.MCTWorkspace
 import mct.dp.mcjson.MCJson
 import mct.dp.mcjson.standardizeMCJson
 import mct.pointer.DataPointer
 import mct.pointer.DataPointerReplacementGroup
+import mct.pointer.DataPointerWithValue
 import mct.pointer.toReplacementGroups
 import mct.util.io.newRelativeFS
 import mct.util.io.openZipReadWrite
@@ -70,7 +72,8 @@ internal fun String.backfill(replacements: List<DatapackReplacement.MCFunction>)
 internal fun String.backfill(replacements: List<DatapackReplacement.MCJson>): String {
     val standardizedJson = standardizeMCJson(this)
     val jsonElement = MCJson.decodeFromString<JsonElement>(standardizedJson)
-    val pointerDatapackReplacementGroups = replacements.map { it.pointer to it.replacement }.toReplacementGroups()
+    val pointerDatapackReplacementGroups =
+        replacements.map { DataPointerWithValue(it.pointer, it.replacement, FormatKind.Json) }.toReplacementGroups()
     val backfilledJsonElement = jsonElement.transform(pointerDatapackReplacementGroups)
     return MCJson.encodeToString(backfilledJsonElement)
 }

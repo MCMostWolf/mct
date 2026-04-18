@@ -1,24 +1,25 @@
 package mct.pointer
 
+import mct.FormatKind
 import kotlin.collections.List as KList
 
 sealed interface DataPointerReplacementGroup {
-    data class Terminator(val replacement: String) : DataPointerReplacementGroup
+    data class Terminator(val replacement: String, val kind: FormatKind) : DataPointerReplacementGroup
     data class Map(val point: String, val values: KList<DataPointerReplacementGroup>) : DataPointerReplacementGroup
     data class List(val point: Int, val values: KList<DataPointerReplacementGroup>) : DataPointerReplacementGroup
 }
 
 private sealed interface Point {
     data object Terminator : Point
-    data class Map(val point: String) : Point
-    data class List(val point: Int) : Point
+    data class Map(val point: String, val kind: FormatKind) : Point
+    data class List(val point: Int, val kind: FormatKind) : Point
 }
 
 fun KList<DataPointerWithValue>.toReplacementGroups(): KList<DataPointerReplacementGroup> {
-    return groupBy { (pointer, _) ->
+    return groupBy { (pointer, _, kind) ->
         when (pointer) {
-            is DataPointer.List -> Point.List(pointer.point)
-            is DataPointer.Map -> Point.Map(pointer.point)
+            is DataPointer.List -> Point.List(pointer.point, kind)
+            is DataPointer.Map -> Point.Map(pointer.point, kind)
             DataPointer.Terminator -> Point.Terminator
         }
     }.map { (point, pointers) ->
@@ -26,7 +27,7 @@ fun KList<DataPointerWithValue>.toReplacementGroups(): KList<DataPointerReplacem
             is Point.List -> {
                 val values = pointers.map { (pointer, replacement) ->
                     pointer as DataPointer.List
-                    pointer.value to replacement
+                    DataPointerWithValue(pointer.value, replacement, point.kind)
                 }
                 DataPointerReplacementGroup.List(
                     point.point,
@@ -37,7 +38,7 @@ fun KList<DataPointerWithValue>.toReplacementGroups(): KList<DataPointerReplacem
             is Point.Map -> {
                 val values = pointers.map { (pointer, replacement) ->
                     pointer as DataPointer.Map
-                    pointer.value to replacement
+                    DataPointerWithValue(pointer.value, replacement, point.kind)
                 }
                 DataPointerReplacementGroup.Map(
                     point.point,
@@ -46,8 +47,8 @@ fun KList<DataPointerWithValue>.toReplacementGroups(): KList<DataPointerReplacem
             }
 
             Point.Terminator -> {
-                val (_, replacement) = pointers.first()
-                DataPointerReplacementGroup.Terminator(replacement)
+                val (_, replacement, kind) = pointers.first()
+                DataPointerReplacementGroup.Terminator(replacement, kind)
             }
         }
     }

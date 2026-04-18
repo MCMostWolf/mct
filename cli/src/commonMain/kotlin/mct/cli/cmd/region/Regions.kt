@@ -9,9 +9,10 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import kotlinx.coroutines.flow.toList
+import mct.ExtractionGroup
 import mct.MCTError
-import mct.RegionExtractionGroup
 import mct.RegionReplacementGroup
+import mct.ReplacementGroup
 import mct.cli.WorkspaceCommand
 import mct.cli.jsonFile
 import mct.cli.path
@@ -41,7 +42,7 @@ private class RegionExtract : WorkspaceCommand(name = "extract") {
     context(_: Raise<MCTError>, fs: FileSystem)
     override suspend fun App() {
         val patterns = if (disableFilter) null else patternsPath.jsonFile<List<DataPointerPattern>>(BuiltinPatterns)
-        val extractions: List<RegionExtractionGroup> = workspace.extractFromRegion(patterns).toList()
+        val extractions: List<ExtractionGroup> = workspace.extractFromRegion(patterns).toList()
 
         val result = PrettyJson.encodeToString(extractions)
         output.writeText(result)
@@ -54,7 +55,8 @@ private class RegionBackfill : WorkspaceCommand(name = "backfill") {
 
     context(_: Raise<MCTError>, fs: FileSystem)
     override suspend fun App() {
-        val replacementGroups = replacementGroupsPath.jsonFile<List<RegionReplacementGroup>>()
+        val replacementGroups =
+            replacementGroupsPath.jsonFile<List<ReplacementGroup>>().filterIsInstance<RegionReplacementGroup>()
         workspace.backfillRegion(replacementGroups)
     }
 }
