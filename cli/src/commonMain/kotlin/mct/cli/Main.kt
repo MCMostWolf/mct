@@ -8,9 +8,9 @@ import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.versionOption
 import kotlinx.coroutines.runBlocking
 import mct.MCTError
-import mct.cli.cmd.Datapack
-import mct.cli.cmd.Kit
-import mct.cli.cmd.Region
+import mct.cli.cmd.datapack.Datapack
+import mct.cli.cmd.kits.Kit
+import mct.cli.cmd.region.Region
 
 fun main(args: Array<String>) = runBlocking {
     MCT().main(args)

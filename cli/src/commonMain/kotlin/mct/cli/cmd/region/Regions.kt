@@ -1,4 +1,4 @@
-package mct.cli.cmd
+package mct.cli.cmd.region
 
 
 import arrow.core.raise.Raise

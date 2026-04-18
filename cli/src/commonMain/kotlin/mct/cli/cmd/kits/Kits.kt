@@ -1,4 +1,4 @@
-package mct.cli.cmd
+package mct.cli.cmd.kits
 
 import arrow.core.raise.Raise
 import com.github.ajalt.clikt.command.SuspendingCliktCommand

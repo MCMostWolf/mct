@@ -2,6 +2,8 @@
   <dictionary name="project">
     <words>
       <w>Snbt</w>
+      <w>envvar</w>
+      <w>envvars</w>
       <w>mcfunction</w>
       <w>mcfunctions</w>
       <w>mcjson</w>
