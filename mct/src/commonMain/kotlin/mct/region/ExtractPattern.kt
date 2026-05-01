@@ -15,6 +15,7 @@ val BuiltinRegionPatterns = PatternSet {
     // --- Modern Item Components (1.20.5+) ---
     // In region files, these are often nested within an item's 'components' tag
     +RightPattern("#components>#minecraft:custom_name(>#raw)?$")
+    +RightPattern("#components>#minecraft:item_name(>#raw)?$")
     +RegexPattern("""#components>#minecraft:lore>\d+(>#raw)?$""")
     +RegexPattern("""#components>#minecraft:written_book_content>#(pages>\d+|title|author)(>#raw)?$""")
     +RegexPattern("""#components>#minecraft:writable_book_content>#pages>\d+(>#raw)?$""")
@@ -34,7 +35,7 @@ val BuiltinRegionPatterns = PatternSet {
     }
     // --- Entities (Mobs, Armor Stands, etc.) ---
     // Matches CustomName for all entities stored in the chunk
-    +RegexPattern("""(^>#>#Entities>\d+|(>#SpawnData|>#SpawnPotentials\d+>#data)>#entity)>#CustomName$""")
+    +RegexPattern("""(^>#>#Entities>\d+|(>#SpawnData|>#SpawnPotentials>\d+>#data)>#entity)>#CustomName$""")
 
     // --- Block Entities (Signs, Containers, Spawners) ---
     // 1. Signs (Front & Back)
