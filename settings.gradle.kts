@@ -5,7 +5,6 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-
 dependencyResolutionManagement {
     rulesMode = RulesMode.PREFER_SETTINGS
     repositories {
@@ -27,6 +26,8 @@ rootProject.name = "mct"
 
 include(
     "mct",
+    "util",
     "cli",
+    "gui",
 //    "web"
 )
