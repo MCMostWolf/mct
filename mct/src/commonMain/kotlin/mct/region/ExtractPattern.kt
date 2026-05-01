@@ -16,16 +16,16 @@ val BuiltinRegionPatterns = PatternSet {
     // In region files, these are often nested within an item's 'components' tag
     +RightPattern("#components>#minecraft:custom_name(>#raw)?$")
     +RightPattern("#components>#minecraft:item_name(>#raw)?$")
+    +RightPattern("#components>#minecraft:item_display(>#raw)?$")
     +RegexPattern("""#components>#minecraft:lore>\d+(>#raw)?$""")
-    +RegexPattern("""#components>#minecraft:written_book_content>#(pages>\d+|title|author)(>#raw)?$""")
-    +RegexPattern("""#components>#minecraft:writable_book_content>#pages>\d+(>#raw)?$""")
+    +RegexPattern("""#components>#minecraft:written_book_content>#(?:pages>\d+|title|author)(?:>#(?:raw|filtered))?$""")
+    +RegexPattern("""#components>#minecraft:writable_book_content>#pages>\d+(?:>#(?:raw|filtered))?$""")
     +RegexPattern("""#components>#minecraft:custom_name(>#raw)?$""")
 
 
 
     // --- Written Books (Nested in Item Tags) ---
     listOf(
-        "pages",                // Book page content
         "title",                // Book title
         "author",               // Book author
         "filtered_pages",       // Censored/Filtered pages
