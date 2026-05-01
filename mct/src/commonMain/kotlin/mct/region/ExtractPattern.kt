@@ -16,7 +16,7 @@ val BuiltinRegionPatterns = PatternSet {
     // In region files, these are often nested within an item's 'components' tag
     +RightPattern("#components>#minecraft:custom_name(>#raw)?$")
     +RightPattern("#components>#minecraft:item_name(>#raw)?$")
-    +RightPattern("#components>#minecraft:item_display(>#raw)?$")
+    +RightPattern("#components>#minecraft:text_display(>#raw)?$")
     +RegexPattern("""#components>#minecraft:lore>\d+(>#raw)?$""")
     +RegexPattern("""#components>#minecraft:written_book_content>#(?:pages>\d+|title|author)(?:>#(?:raw|filtered))?$""")
     +RegexPattern("""#components>#minecraft:writable_book_content>#pages>\d+(?:>#(?:raw|filtered))?$""")
