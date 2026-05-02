@@ -22,6 +22,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import arrow.core.raise.either
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import mct.Env
 import mct.LoggerLevel
@@ -106,6 +107,20 @@ fun App() {
 
     val scope = rememberCoroutineScope()
 
+    fun launchOp(
+        prelude: () -> Unit,
+        block: suspend CoroutineScope.() -> Unit
+    ) {
+        prelude()
+        scope.launch {
+            try { block() }
+            catch (e: Exception) {
+                logLines.add(LogEntry(LoggerLevel.Error, e.stackTraceToString()))
+                snackbarHostState.showSnackbar(e.message ?: "未知错误")
+            } finally { isRunning = false }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
@@ -176,15 +191,13 @@ fun App() {
                                 onStateChange = { extractState = it },
                                 isRunning = isRunning,
                                 onRun = {
-                                    isRunning = true; logLines.clear()
-                                    scope.launch {
+                                    launchOp(prelude = { isRunning = true; logLines.clear() }) {
                                         runExtraction(
                                             env, extractState.input, extractState.output, extractState.mode.key,
                                             extractState.disableFilter,
                                             extractState.regionPatternPath, extractState.mcfPatternPath,
                                             extractState.mcjPatternPath
                                         )
-                                        isRunning = false
                                     }
                                 }
                             )
@@ -196,11 +209,7 @@ fun App() {
                                 translationStatus = translateStatus,
                                 isRunning = isRunning,
                                 onRun = {
-                                    isRunning = true
-                                    logLines.clear()
-                                    translateProgress = 0f
-                                    translateStatus = ""
-                                    scope.launch {
+                                    launchOp(prelude = { isRunning = true; logLines.clear(); translateProgress = 0f; translateStatus = "" }) {
                                         either {
                                             runTranslation(
                                                 env = env,
@@ -223,7 +232,6 @@ fun App() {
                                         }.onLeft {
                                             snackbarHostState.showSnackbar(it.message)
                                         }
-                                        isRunning = false
                                     }
                                 },
                                 onSaveSettings = {
@@ -241,8 +249,13 @@ fun App() {
                                 onRun = {
                                     isRunning = true; logLines.clear()
                                     scope.launch {
-                                        runBackfill(env, backfillState.input, backfillState.replacements, backfillState.mode.key)
-                                        isRunning = false
+                                        try {
+                                            runBackfill(env, backfillState.input, backfillState.replacements, backfillState.mode.key)
+                                        } catch (e: Exception) {
+                                            logLines.add(LogEntry(LoggerLevel.Error, e.stackTraceToString()))
+                                        } finally {
+                                            isRunning = false
+                                        }
                                     }
                                 }
                             )
