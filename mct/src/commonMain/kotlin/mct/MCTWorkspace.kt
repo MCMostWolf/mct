@@ -3,9 +3,11 @@ package mct
 import arrow.core.raise.context.Raise
 import arrow.core.raise.context.either
 import arrow.core.raise.context.ensure
+import mct.model.LevelRoot
 import mct.region.anvil.*
 import mct.serializer.NbtGzip
 import net.benwoodworth.knbt.NbtCompound
+import net.benwoodworth.knbt.decodeFromNbtTag
 import net.benwoodworth.knbt.decodeFromSource
 import okio.Path
 import okio.Path.Companion.toPath
@@ -23,20 +25,23 @@ class MCTWorkspace private constructor(
     companion object {
         context(_: Raise<OpenError>)
         operator fun invoke(rootDir: Path, env: Env): MCTWorkspace {
-            ensure (env.fs.exists(rootDir / "level.dat")) {
+            ensure(env.fs.exists(rootDir / "level.dat")) {
                 OpenError.UnvalidatedDir(rootDir)
             }
             return MCTWorkspace(rootDir, env)
         }
     }
 
-    val level =
+    val levelRaw =
         fs.read(rootDir / "level.dat".toPath()) {
             val rootTag = NbtGzip.decodeFromSource<NbtCompound>(this)
-//            NbtGzip.decodeFromNbtTag<LevelRoot>(rootTag)
-            // for backwards compatibility, use NbtTag rather but deserialization
             rootTag
         }
+    val level = runCatching {
+        NbtGzip.decodeFromNbtTag<LevelRoot>(levelRaw)
+    }.getOrElse {
+        logger.warning { "Cannot parse level root: $it" }
+    }
 
     val datapackDir = rootDir / "datapacks"
 
