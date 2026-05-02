@@ -6,3 +6,5 @@ The tool can help you extract text(in `TextCompound` form) from datapack and reg
 and backfill the replacement.
 
 The project is currently under development.
+
+You can get articles from CI, where there're cli and gui version.
