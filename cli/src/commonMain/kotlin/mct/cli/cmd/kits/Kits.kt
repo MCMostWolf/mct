@@ -140,6 +140,7 @@ private class AITranslate : BaseCommand(
     val apiUrl by option("--openai-api-url", envvar = "OPENAI_URL", help = "OpenAI compatible API base URL")
     val model by option("--openai-model", envvar = "OPENAI_MODEL", help = "Model name (e.g. gpt-4o)").required()
     val token by option("--openai-token", envvar = "OPENAI_TOKEN", help = "API access token").required()
+    val useStreamApi by option("--use-stream-api", envvar = "OPENAI_STREAM_API", help = "Using streaming API can solve some api empty response, but maybe will slow down translation.").flag(default = false)
 
     context(_: Raise<MCTError>)
     override suspend fun App() {
@@ -148,7 +149,14 @@ private class AITranslate : BaseCommand(
         val terms = term.jsonFile<TermTable>(emptySet())
         logger.info { "Loaded ${extractionGroups.size} groups, ${terms.size} existing terms" }
 
-        val translator = OpenAITranslator(apiUrl, token, model, terms, env)
+        val translator = OpenAITranslator(
+            apiUrl = apiUrl,
+            token = token,
+            model = model,
+            defaultTerms = terms,
+            env = env,
+            useStreamApi = useStreamApi
+        )
 
         logger.info { "Starting translation..." }
         val translated = translator.translate(extractionGroups)
