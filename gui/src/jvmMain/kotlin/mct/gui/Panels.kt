@@ -120,6 +120,7 @@ fun TranslatePanel(
     apiUrl: String, onApiUrlChange: (String) -> Unit,
     apiToken: String, onApiTokenChange: (String) -> Unit,
     model: String, onModelChange: (String) -> Unit,
+    useStreamApi: Boolean, onUseStreamApiChange: (Boolean) -> Unit,
     existingTermPath: String, onExistingTermPathChange: (String) -> Unit,
     onSaveSettings: () -> Unit,
     translationProgress: Float, translationStatus: String,
@@ -212,6 +213,15 @@ fun TranslatePanel(
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
             )
         )
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = useStreamApi, onCheckedChange = onUseStreamApiChange)
+            Text(
+                "使用流式API(可以解决持续空行的过多重试, 但是可能导致返回变慢)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
 

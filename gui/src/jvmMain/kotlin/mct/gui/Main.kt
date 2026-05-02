@@ -27,7 +27,6 @@ import androidx.compose.ui.window.application
 import arrow.core.raise.either
 import kotlinx.coroutines.launch
 import mct.Env
-import mct.extra.translator.TranslateError
 import mct.extra.translator.TranslateSign
 import mct.on
 import mct.onSign
@@ -56,7 +55,7 @@ fun main() = application {
 
 @Composable
 fun App() {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     var logText by remember { mutableStateOf("就绪。\n") }
     var isRunning by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -78,8 +77,9 @@ fun App() {
     var apiUrl by remember { mutableStateOf("") }
     var apiToken by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("gpt-4o") }
+    var useStreamApi by remember { mutableStateOf(false) }
     var existingTermPath by remember { mutableStateOf("") }
-    var translateProgress by remember { mutableStateOf(0f) }
+    var translateProgress by remember { mutableFloatStateOf(0f) }
     var translateStatus by remember { mutableStateOf("") }
 
     // 回填
@@ -228,6 +228,8 @@ fun App() {
                                 onApiTokenChange = { apiToken = it },
                                 model = model,
                                 onModelChange = { model = it },
+                                useStreamApi = useStreamApi,
+                                onUseStreamApiChange = { useStreamApi = it },
                                 existingTermPath = existingTermPath,
                                 onExistingTermPathChange = { existingTermPath = it },
                                 onSaveSettings = {
@@ -247,20 +249,24 @@ fun App() {
                                     scope.launch {
                                         either {
                                             runTranslation(
-                                                env,
-                                                translateInput,
-                                                translateOutput,
-                                                mappingOutput,
-                                                termOutput,
-                                                apiUrl.ifBlank { null },
-                                                apiToken,
-                                                model,
-                                                existingTermPath.ifBlank { null }
+                                                env = env,
+                                                input = translateInput,
+                                                output = translateOutput,
+                                                mappingOutput = mappingOutput,
+                                                termOutput = termOutput,
+                                                apiUrl = apiUrl.ifBlank { null },
+                                                token = apiToken,
+                                                model = model,
+                                                termPath = existingTermPath.ifBlank { null },
+                                                useStreamApi = useStreamApi,
+                                                onFailure = {
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar(it.message)
+                                                    }
+                                                }
                                             )
                                         }.onLeft {
-                                            when (it) {
-                                                TranslateError.IllegalUrl -> snackbarHostState.showSnackbar("The api url must end with /v1/.")
-                                            }
+                                            snackbarHostState.showSnackbar(it.message)
                                         }
                                         isRunning = false
                                     }

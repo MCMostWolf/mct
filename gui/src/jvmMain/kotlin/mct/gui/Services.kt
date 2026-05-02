@@ -1,5 +1,6 @@
 package mct.gui
 
+import arrow.core.getOrElse
 import arrow.core.raise.Raise
 import arrow.core.raise.either
 import kotlinx.coroutines.Dispatchers
@@ -190,6 +191,8 @@ suspend fun runTranslation(
     token: String,
     model: String,
     termPath: String?,
+    useStreamApi: Boolean = false,
+    onFailure: ((TranslateError) -> Unit)? = null
 ) {
     withContext(Dispatchers.IO) {
         env.logger.info { "正在加载提取结果: $input" }
@@ -204,13 +207,20 @@ suspend fun runTranslation(
             }
         } else emptySet()
 
-        val translator = OpenAITranslator(
-            apiUrl?.trim()?.ifBlank { null },
-            token.trim(),
-            model.trim(),
-            existingTerms,
-            env
-        )
+        val translator = either {
+            OpenAITranslator(
+                apiUrl = apiUrl?.trim()?.ifBlank { null },
+                token = token.trim(),
+                model = model.trim(),
+                defaultTerms = existingTerms,
+                env = env,
+                useStreamApi = useStreamApi
+            )
+        }.getOrElse {
+            onFailure?.invoke(it)
+            return@withContext
+        }
+
         try {
             val mapping = translator.translate(extractionGroups)
             val replacements = extractionGroups.replace(translator.translate(extractionGroups))

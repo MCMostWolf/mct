@@ -1,8 +1,3 @@
-import com.aallam.openai.api.chat.ChatChoice
-import com.aallam.openai.api.chat.ChatCompletion
-import com.aallam.openai.api.chat.ChatMessage
-import com.aallam.openai.api.chat.ChatRole
-import com.aallam.openai.api.model.ModelId
 import io.kotest.assertions.arrow.core.shouldNotRaise
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FreeSpec
@@ -17,7 +12,7 @@ class OpenAITranslatorTest : FreeSpec({
     val apiUrl = envvar("OPENAI_URL")
     val token = envvar("OPENAI_TOKEN")
     val model = envvar("OPENAI_MODEL")
-    fun translator() = shouldNotRaise { OpenAITranslator(apiUrl!!, token!!, model!!, defaultTerms = emptySet()) }
+    suspend fun translator() = shouldNotRaise { OpenAITranslator(apiUrl!!, token!!, model!!, defaultTerms = emptySet()) }
 
     "parse test" {
         val response = """
@@ -157,7 +152,7 @@ class OpenAITranslatorTest : FreeSpec({
             var callIndex = 0
             val callChunkSizes = mutableListOf<Int>()
 
-            val mockChat: suspend (String) -> ChatCompletion = { message ->
+            val mockChat: suspend (String) -> String = { message ->
                 val idx = callIndex++
                 // Count [N] markers in the input message body
                 val body = message.substringAfter("-- MCT-CLI:START --").trim()
@@ -174,20 +169,7 @@ class OpenAITranslatorTest : FreeSpec({
                     appendLine("[]")
                     append("-- MCT-CLI:END --")
                 }
-                ChatCompletion(
-                    id = "mock-$idx",
-                    created = 0,
-                    model = ModelId("mock-model"),
-                    choices = listOf(
-                        ChatChoice(
-                            index = 0,
-                            message = ChatMessage(
-                                role = ChatRole.Assistant,
-                                content = content
-                            )
-                        )
-                    )
-                )
+                content
             }
 
             val sources = (0 until 10).flatMap { TEST_TEXT.lines() }
@@ -213,19 +195,4 @@ class OpenAITranslatorTest : FreeSpec({
 /**
  * Creates a mock chatCompletion function that returns a pre-configured response.
  */
-fun mockChatCompletion(content: String): suspend (String) -> ChatCompletion = {
-    ChatCompletion(
-        id = "mock-id",
-        created = 0,
-        model = ModelId("mock-model"),
-        choices = listOf(
-            ChatChoice(
-                index = 0,
-                message = ChatMessage(
-                    role = ChatRole.Assistant,
-                    content = content
-                )
-            )
-        )
-    )
-}
+fun mockChatCompletion(content: String): suspend (String) -> String = { content }

@@ -3,7 +3,11 @@ package mct.extra.translator
 import arrow.core.Option
 import arrow.core.raise.Raise
 import arrow.core.raise.context.ensure
-import com.aallam.openai.api.chat.*
+import arrow.core.raise.context.raise
+import com.aallam.openai.api.chat.ChatCompletionRequest
+import com.aallam.openai.api.chat.ChatMessage
+import com.aallam.openai.api.chat.ChatResponseFormat
+import com.aallam.openai.api.chat.ChatRole
 import com.aallam.openai.api.exception.OpenAIHttpException
 import com.aallam.openai.api.exception.OpenAITimeoutException
 import com.aallam.openai.api.logging.LogLevel
@@ -14,6 +18,8 @@ import com.aallam.openai.client.OpenAIHost
 import io.ktor.client.plugins.logging.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.fold
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.decodeFromString
@@ -132,28 +138,60 @@ private val REGEX_LLM_OUTPUT =
 
 private const val MAX_RETRY = 20
 
+private suspend fun OpenAI.chatCompletion(
+    model: String,
+    message: String,
+    useStreamApi: Boolean = false
+): String {
+    val request = ChatCompletionRequest(
+        model = ModelId(model),
+        responseFormat = ChatResponseFormat.Text,
+        messages = listOf(
+            ChatMessage(
+                role = ChatRole.System,
+                content = PROMPT,
+            ),
+            ChatMessage(
+                role = ChatRole.User,
+                content = message,
+            )
+        ),
+    )
+    return if (useStreamApi) chatCompletions(request)
+        .mapNotNull { it.choices.firstOrNull() }
+        .mapNotNull { it.delta }
+        .fold(StringBuilder()) { acc, e ->
+            e.content?.let {
+                acc.append(it)
+            } ?: acc
+        }.toString().also { println(it) } else chatCompletion(request).choices.first().message.content!!
+}
+
 class OpenAITranslator internal constructor(
-    private val chatCompletion: suspend (String) -> ChatCompletion,
+    private val chatCompletion: suspend (String) -> String,
     private val model: String,
     defaultTerms: TermTable,
     override val env: Env
 ) : Translator {
     companion object {
         context(_: Raise<TranslateError>)
-        operator fun invoke(
+        suspend operator fun invoke(
             apiUrl: String?,
             token: String,
             model: String,
             defaultTerms: TermTable,
+            useStreamApi: Boolean = false,
             env: Env = Env.Default
         ): OpenAITranslator {
-            ensure(apiUrl?.endsWith("/v1/") ?: true) {
-                TranslateError.IllegalUrl
-            }
-
+            val host = apiUrl?.let {
+                val url = StringBuilder(apiUrl)
+                if (!url.endsWith("/")) url.append("/")
+                if (!url.endsWith("v1/")) url.append("v1/")
+                OpenAIHost(url.toString())
+            } ?: OpenAIHost.OpenAI
             val client = OpenAI(
                 token,
-                host = apiUrl?.let(::OpenAIHost) ?: OpenAIHost.OpenAI,
+                host = host,
                 logging = LoggingConfig(
                     logLevel = LogLevel.Info,
                 ),
@@ -170,23 +208,17 @@ class OpenAITranslator internal constructor(
                     }
                 }
             )
+            val models = runCatching {
+                client.models()
+            }.getOrElse {
+                raise(TranslateError.IllegalUrl("Try request models, but it cannot respond correctly."))
+            }
+            ensure(model in models.map { it.id.id }) {
+                TranslateError.ModelNotFound(model)
+            }
+
             val chatCompletion = suspend { message: String ->
-                client.chatCompletion(
-                    ChatCompletionRequest(
-                        model = ModelId(model),
-                        responseFormat = ChatResponseFormat.Text,
-                        messages = listOf(
-                            ChatMessage(
-                                role = ChatRole.System,
-                                content = PROMPT,
-                            ),
-                            ChatMessage(
-                                role = ChatRole.User,
-                                content = message,
-                            )
-                        ),
-                    ),
-                )
+                client.chatCompletion(model, message, useStreamApi)
             }
 
             return OpenAITranslator(chatCompletion, model, defaultTerms, env)
@@ -234,16 +266,24 @@ class OpenAITranslator internal constructor(
                         continue
                     } else throw e
                 }
-                val (t, tr) = parseLLMResponse(completion.choices.first().message.content!!, strips.size)
-                if (tr.size == chunk.size) {
-                    appendTerms = t
-                    appendedTranslated = strips.destrip(tr)
-                    break
-                }
-                llmRetry++
-                logger.warning { "Lines not match: the expected is ${chunk.size}, but the actual is ${tr.size}. Retry $llmRetry/3" }
-                if (llmRetry >= MAX_RETRY) {
-                    error("The line count LLM responded (${tr.size}) don't match ${chunk.size}, and trying to run out.")
+                try {
+                    val (t, tr) = parseLLMResponse(completion, strips.size)
+                    if (tr.size == chunk.size) {
+                        appendTerms = t
+                        appendedTranslated = strips.destrip(tr)
+                        break
+                    }
+                    llmRetry++
+                    logger.warning { "Lines not match: the expected is ${chunk.size}, but the actual is ${tr.size}. Retry $llmRetry/$MAX_RETRY" }
+                    if (llmRetry >= MAX_RETRY) {
+                        error("The line count LLM responded (${tr.size}) don't match ${chunk.size}, and trying to run out.")
+                    }
+                } catch (e: Exception) {
+                    llmRetry++
+                    logger.error { "LLM response parse failed (${llmRetry}/$MAX_RETRY): ${e.message}. Retrying..." }
+                    if (llmRetry >= MAX_RETRY) {
+                        error("LLM response consistently malformed after $MAX_RETRY retries")
+                    }
                 }
             }
 
@@ -345,7 +385,7 @@ private val LINE_PREFIX = Regex("""^\[(\d+)]\s*""")
 
 internal fun parseLLMResponse(content: String, expectedSize: Int): Pair<TermTable, List<String?>> {
     val (appendedTranslated, appendTermsStr) = REGEX_LLM_OUTPUT.matchEntire(content)?.destructured
-        ?: error("LLM responses invalidly")
+        ?: error("LLM responses invalidly: $content")
     val appendTerms = runCatching { Json.decodeFromString<TermTable>(appendTermsStr) }.getOrNull().orEmpty()
     val lines = appendedTranslated.lines()
         .asSequence()
