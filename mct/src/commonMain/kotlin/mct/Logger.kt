@@ -38,7 +38,7 @@ abstract class Logger(
         }
     }
 
-    val levelMarks = enabledLevels.fold(0) { acc, e ->
+    val levelMarks = (enabledLevels + LoggerLevel.Sign).fold(0) { acc, e ->
         acc or e.mask
     }
 
@@ -54,7 +54,7 @@ abstract class Logger(
     inline fun warning(message: () -> String) = logFiltered(LoggerLevel.Warning, message)
 
     inline fun <reified T> sign(value: () -> T) = logFiltered(LoggerLevel.Sign) {
-        val key = keyOf<T>()
+        val key = T::class.qualifiedName ?: T::class.toString()
         val value = Json.encodeToString(value())
         "$key $value"
     }
@@ -104,5 +104,3 @@ inline fun Logger.onSign(register: OnSignRegistry.() -> Unit): Logger {
     }
 }
 
-
-inline fun <reified T> keyOf() = (T::class.qualifiedName ?: T::class.toString()).hashCode().toString()

@@ -164,7 +164,7 @@ private suspend fun OpenAI.chatCompletion(
             e.content?.let {
                 acc.append(it)
             } ?: acc
-        }.toString().also { println(it) } else chatCompletion(request).choices.first().message.content!!
+        }.toString() else chatCompletion(request).choices.first().message.content!!
 }
 
 class OpenAITranslator internal constructor(

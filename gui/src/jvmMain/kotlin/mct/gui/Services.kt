@@ -223,7 +223,8 @@ suspend fun runTranslation(
 
         try {
             val mapping = translator.translate(extractionGroups)
-            val replacements = extractionGroups.replace(translator.translate(extractionGroups))
+
+            val replacements = extractionGroups.replace(mapping)
 
             env.fs.write(output.toPath()) { writeUtf8(MCTJson.encodeToString(replacements)) }
             env.fs.write(mappingOutput.toPath()) { writeUtf8(MCTJson.encodeToString(mapping)) }
