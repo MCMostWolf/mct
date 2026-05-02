@@ -55,37 +55,18 @@ fun main() = application {
 
 @Composable
 fun App() {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableStateOf(Tab.Extract) }
     var logText by remember { mutableStateOf("就绪。\n") }
     var isRunning by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     // 提取
-    var extractInput by remember { mutableStateOf("") }
-    var extractOutput by remember { mutableStateOf("extractions.json") }
-    var extractMode by remember { mutableStateOf("region") }
-    var disableFilter by remember { mutableStateOf(false) }
-    var regionPatternPath by remember { mutableStateOf("") }
-    var mcfPatternPath by remember { mutableStateOf("") }
-    var mcjPatternPath by remember { mutableStateOf("") }
+    var extractState by remember { mutableStateOf(ExtractState()) }
+    var translateState by remember { mutableStateOf(TranslateState()) }
+    var backfillState by remember { mutableStateOf(BackfillState()) }
 
-    // 翻译
-    var translateInput by remember { mutableStateOf("extractions.json") }
-    var translateOutput by remember { mutableStateOf("replacements.json") }
-    var mappingOutput by remember { mutableStateOf("mappings.json") }
-    var termOutput by remember { mutableStateOf("terms.json") }
-    var apiUrl by remember { mutableStateOf("") }
-    var apiToken by remember { mutableStateOf("") }
-    var model by remember { mutableStateOf("gpt-4o") }
-    var useStreamApi by remember { mutableStateOf(false) }
-    var existingTermPath by remember { mutableStateOf("") }
     var translateProgress by remember { mutableFloatStateOf(0f) }
     var translateStatus by remember { mutableStateOf("") }
-
-    // 回填
-    var backfillInput by remember { mutableStateOf("") }
-    var backfillReplacements by remember { mutableStateOf("replacements.json") }
-    var backfillMode by remember { mutableStateOf("region") }
 
 
     val guiLogger = remember {
@@ -110,9 +91,11 @@ fun App() {
     // 启动时同步加载 API 设置
     val savedSettings = remember { loadSettings() }
     LaunchedEffect(Unit) {
-        apiUrl = savedSettings.apiUrl
-        model = savedSettings.model
-        apiToken = savedSettings.apiToken
+        translateState = translateState.copy(
+            apiUrl = savedSettings.apiUrl,
+            model = savedSettings.model,
+            apiToken = savedSettings.apiToken
+        )
         if (savedSettings.apiUrl.isNotBlank() || savedSettings.apiToken.isNotBlank()) {
             logText += "已加载 API 设置 ($settingsPathString)\n"
         }
@@ -141,26 +124,26 @@ fun App() {
             )
 
             SecondaryTabRow(
-                selectedTabIndex = selectedTab,
+                selectedTabIndex = selectedTab.ordinal,
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
                 contentColor = MaterialTheme.colorScheme.surface,
                 containerColor = MaterialTheme.colorScheme.primary,
                 divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
             ) {
-                Tab(selectedTab == 0, { selectedTab = 0 }) {
+                Tab(selectedTab == Tab.Extract, { selectedTab = Tab.Extract }) {
                     Icon(Icons.Outlined.Search, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("提取文本")
+                    Text(Tab.Extract.label)
                 }
-                Tab(selectedTab == 1, { selectedTab = 1 }) {
+                Tab(selectedTab == Tab.Translate, { selectedTab = Tab.Translate }) {
                     Icon(Icons.Outlined.Translate, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("AI 翻译")
+                    Text(Tab.Translate.label)
                 }
-                Tab(selectedTab == 2, { selectedTab = 2 }) {
+                Tab(selectedTab == Tab.Backfill, { selectedTab = Tab.Backfill }) {
                     Icon(Icons.Outlined.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("回填存档")
+                    Text(Tab.Backfill.label)
                 }
             }
 
@@ -185,59 +168,27 @@ fun App() {
                     val contentScroll = rememberScrollState()
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(contentScroll)) {
                         when (tab) {
-                            0 -> ExtractPanel(
-                                inputPath = extractInput,
-                                onInputChange = { extractInput = it },
-                                outputPath = extractOutput,
-                                onOutputChange = { extractOutput = it },
-                                mode = extractMode,
-                                onModeChange = { extractMode = it },
-                                disableFilter = disableFilter,
-                                onDisableFilterChange = { disableFilter = it },
-                                regionPatternPath = regionPatternPath,
-                                onRegionPatternChange = { regionPatternPath = it },
-                                mcfPatternPath = mcfPatternPath,
-                                onMcfPatternChange = { mcfPatternPath = it },
-                                mcjPatternPath = mcjPatternPath,
-                                onMcjPatternChange = { mcjPatternPath = it },
+                            Tab.Extract -> ExtractPanel(
+                                state = extractState,
+                                onStateChange = { extractState = it },
                                 isRunning = isRunning,
                                 onRun = {
                                     isRunning = true; logText = ""
                                     scope.launch {
                                         runExtraction(
-                                            env, extractInput, extractOutput, extractMode, disableFilter,
-                                            regionPatternPath, mcfPatternPath, mcjPatternPath
+                                            env, extractState.input, extractState.output, extractState.mode.key,
+                                            extractState.disableFilter,
+                                            extractState.regionPatternPath, extractState.mcfPatternPath,
+                                            extractState.mcjPatternPath
                                         )
                                         isRunning = false
                                     }
                                 }
                             )
 
-                            1 -> TranslatePanel(
-                                inputPath = translateInput,
-                                onInputChange = { translateInput = it },
-                                outputPath = translateOutput,
-                                onOutputChange = { translateOutput = it },
-                                mappingOutput = mappingOutput,
-                                onMappingOutput = { mappingOutput = it },
-                                termOutput = termOutput,
-                                onTermOutputChange = { termOutput = it },
-                                apiUrl = apiUrl,
-                                onApiUrlChange = { apiUrl = it },
-                                apiToken = apiToken,
-                                onApiTokenChange = { apiToken = it },
-                                model = model,
-                                onModelChange = { model = it },
-                                useStreamApi = useStreamApi,
-                                onUseStreamApiChange = { useStreamApi = it },
-                                existingTermPath = existingTermPath,
-                                onExistingTermPathChange = { existingTermPath = it },
-                                onSaveSettings = {
-                                    logText += if (saveSettings(apiUrl, model, apiToken))
-                                        "API 设置已保存到 $settingsPathString\n"
-                                    else
-                                        "保存 API 设置失败\n"
-                                },
+                            Tab.Translate -> TranslatePanel(
+                                state = translateState,
+                                onStateChange = { translateState = it },
                                 translationProgress = translateProgress,
                                 translationStatus = translateStatus,
                                 isRunning = isRunning,
@@ -250,15 +201,15 @@ fun App() {
                                         either {
                                             runTranslation(
                                                 env = env,
-                                                input = translateInput,
-                                                output = translateOutput,
-                                                mappingOutput = mappingOutput,
-                                                termOutput = termOutput,
-                                                apiUrl = apiUrl.ifBlank { null },
-                                                token = apiToken,
-                                                model = model,
-                                                termPath = existingTermPath.ifBlank { null },
-                                                useStreamApi = useStreamApi,
+                                                input = translateState.input,
+                                                output = translateState.output,
+                                                mappingOutput = translateState.mappingOutput,
+                                                termOutput = translateState.termOutput,
+                                                apiUrl = translateState.apiUrl.ifBlank { null },
+                                                token = translateState.apiToken,
+                                                model = translateState.model,
+                                                termPath = translateState.existingTermPath.ifBlank { null },
+                                                useStreamApi = translateState.useStreamApi,
                                                 onFailure = {
                                                     scope.launch {
                                                         snackbarHostState.showSnackbar(it.message)
@@ -270,21 +221,23 @@ fun App() {
                                         }
                                         isRunning = false
                                     }
+                                },
+                                onSaveSettings = {
+                                    logText += if (saveSettings(translateState.apiUrl, translateState.model, translateState.apiToken))
+                                        "API 设置已保存到 $settingsPathString\n"
+                                    else
+                                        "保存 API 设置失败\n"
                                 }
                             )
 
-                            2 -> BackfillPanel(
-                                inputPath = backfillInput,
-                                onInputChange = { backfillInput = it },
-                                replacementsPath = backfillReplacements,
-                                onReplacementsChange = { backfillReplacements = it },
-                                mode = backfillMode,
-                                onModeChange = { backfillMode = it },
+                            Tab.Backfill -> BackfillPanel(
+                                state = backfillState,
+                                onStateChange = { backfillState = it },
                                 isRunning = isRunning,
                                 onRun = {
                                     isRunning = true; logText = ""
                                     scope.launch {
-                                        runBackfill(env, backfillInput, backfillReplacements, backfillMode)
+                                        runBackfill(env, backfillState.input, backfillState.replacements, backfillState.mode.key)
                                         isRunning = false
                                     }
                                 }

@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
 // ── 可复用组件 ───────────────────────────────────────────────
@@ -102,4 +103,76 @@ fun ActionButton(label: String, running: Boolean, onClick: () -> Unit, enabled: 
             Text(label)
         }
     }
+}
+
+// ── Enums ──────────────────────────────────────────────────────
+
+enum class Tab(val label: String) {
+    Extract("提取文本"),
+    Translate("AI 翻译"),
+    Backfill("回填存档")
+}
+
+enum class RunMode(val key: String, val label: String) {
+    Region("region", "Region (.mca 区域文件)"),
+    Datapack("datapack", "Datapack (数据包)")
+}
+
+// ── State holders ──────────────────────────────────────────────
+
+data class ExtractState(
+    val input: String = "",
+    val output: String = "extractions.json",
+    val mode: RunMode = RunMode.Region,
+    val disableFilter: Boolean = false,
+    val regionPatternPath: String = "",
+    val mcfPatternPath: String = "",
+    val mcjPatternPath: String = "",
+)
+
+data class TranslateState(
+    val input: String = "extractions.json",
+    val output: String = "replacements.json",
+    val mappingOutput: String = "mappings.json",
+    val termOutput: String = "terms.json",
+    val apiUrl: String = "",
+    val apiToken: String = "",
+    val model: String = "gpt-4o",
+    val useStreamApi: Boolean = false,
+    val existingTermPath: String = "",
+)
+
+data class BackfillState(
+    val input: String = "",
+    val replacements: String = "replacements.json",
+    val mode: RunMode = RunMode.Region,
+)
+
+// ── 通用组件 ─────────────────────────────────────────────────
+
+@Composable
+fun ConfigTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: @Composable () -> Unit,
+    placeholder: @Composable (() -> Unit)? = null,
+    singleLine: Boolean = true,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    trailingIcon: @Composable (() -> Unit)? = null,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        placeholder = placeholder,
+        singleLine = singleLine,
+        modifier = modifier,
+        visualTransformation = visualTransformation,
+        trailingIcon = trailingIcon,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+        )
+    )
 }

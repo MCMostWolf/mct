@@ -1,6 +1,7 @@
 package mct.gui
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -24,55 +25,51 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberFileSaverLauncher
 
 @Composable
 fun ExtractPanel(
-    inputPath: String, onInputChange: (String) -> Unit,
-    outputPath: String, onOutputChange: (String) -> Unit,
-    mode: String, onModeChange: (String) -> Unit,
-    disableFilter: Boolean, onDisableFilterChange: (Boolean) -> Unit,
-    regionPatternPath: String, onRegionPatternChange: (String) -> Unit,
-    mcfPatternPath: String, onMcfPatternChange: (String) -> Unit,
-    mcjPatternPath: String, onMcjPatternChange: (String) -> Unit,
-    isRunning: Boolean, onRun: () -> Unit
+    state: ExtractState,
+    onStateChange: (ExtractState) -> Unit,
+    isRunning: Boolean,
+    onRun: () -> Unit
 ) {
     val dirPicker = rememberDirectoryPickerLauncher { file: PlatformFile? ->
-        file?.let { onInputChange(it.absolutePath()) }
+        file?.let { onStateChange(state.copy(input = it.absolutePath())) }
     }
     val fileSaver = rememberFileSaverLauncher(FileKitDialogSettings.createDefault()) { file: PlatformFile? ->
-        file?.let { onOutputChange(ensureJsonExt(it.absolutePath())) }
+        file?.let { onStateChange(state.copy(output = ensureJsonExt(it.absolutePath()))) }
     }
     val patternPicker = rememberFilePickerLauncher(
-        type = FileKitType.File(),
-        mode = FileKitMode.Single
-    ) { file: PlatformFile? -> file?.let { onRegionPatternChange(it.absolutePath()) } }
+        type = FileKitType.File(), mode = FileKitMode.Single
+    ) { file: PlatformFile? -> file?.let { onStateChange(state.copy(regionPatternPath = it.absolutePath())) } }
     val mcfPatternPicker = rememberFilePickerLauncher(
-        type = FileKitType.File(),
-        mode = FileKitMode.Single
-    ) { file: PlatformFile? -> file?.let { onMcfPatternChange(it.absolutePath()) } }
+        type = FileKitType.File(), mode = FileKitMode.Single
+    ) { file: PlatformFile? -> file?.let { onStateChange(state.copy(mcfPatternPath = it.absolutePath())) } }
     val mcjPatternPicker = rememberFilePickerLauncher(
-        type = FileKitType.File(),
-        mode = FileKitMode.Single
-    ) { file: PlatformFile? -> file?.let { onMcjPatternChange(it.absolutePath()) } }
+        type = FileKitType.File(), mode = FileKitMode.Single
+    ) { file: PlatformFile? -> file?.let { onStateChange(state.copy(mcjPatternPath = it.absolutePath())) } }
 
     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle("输入 / 输出", Icons.Outlined.FolderOpen)
 
-        PathRow("Minecraft 存档目录", "选择包含 level.dat 的文件夹...", inputPath, onInputChange) {
+        PathRow("Minecraft 存档目录", "选择包含 level.dat 的文件夹...", state.input, { onStateChange(state.copy(input = it)) }) {
             dirPicker.launch()
         }
-        PathRow("输出 JSON 文件", "选择保存位置...", outputPath, onOutputChange) {
+        PathRow("输出 JSON 文件", "选择保存位置...", state.output, { onStateChange(state.copy(output = it)) }) {
             fileSaver.launch(suggestedName = "extractions", extension = "json")
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 4.dp),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
 
         SectionTitle("提取选项", Icons.Outlined.Tune)
 
         Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-            ModeRadio("Region (.mca 区域文件)", mode == "region") { onModeChange("region") }
-            ModeRadio("Datapack (数据包)", mode == "datapack") { onModeChange("datapack") }
+            ModeRadio(RunMode.Region.label, state.mode == RunMode.Region) { onStateChange(state.copy(mode = RunMode.Region)) }
+            ModeRadio(RunMode.Datapack.label, state.mode == RunMode.Datapack) { onStateChange(state.copy(mode = RunMode.Datapack)) }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = disableFilter, onCheckedChange = onDisableFilterChange)
+            Checkbox(checked = state.disableFilter, onCheckedChange = { onStateChange(state.copy(disableFilter = it)) })
             Text(
                 "提取所有文本（禁用内置过滤器）",
                 style = MaterialTheme.typography.bodyMedium,
@@ -80,32 +77,43 @@ fun ExtractPanel(
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 4.dp),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
 
         SectionTitle("自定义过滤规则（可选）", Icons.Outlined.FilterList)
 
-        if (mode == "region") {
-            PathRow(
-                "Region 过滤规则 JSON",
-                "留空则使用内置规则...",
-                regionPatternPath, onRegionPatternChange
-            ) { patternPicker.launch() }
-        } else {
-            PathRow(
-                "MCFunction 过滤规则 JSON",
-                "留空则使用内置规则...",
-                mcfPatternPath, onMcfPatternChange
-            ) { mcfPatternPicker.launch() }
-            PathRow(
-                "MCJson 过滤规则 JSON",
-                "留空则使用内置规则...",
-                mcjPatternPath, onMcjPatternChange
-            ) { mcjPatternPicker.launch() }
+        AnimatedContent(
+            targetState = state.mode,
+            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(200)) },
+            label = "mode-filters"
+        ) { mode ->
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (mode == RunMode.Region) {
+                    PathRow(
+                        "Region 过滤规则 JSON",
+                        "留空则使用内置规则...",
+                        state.regionPatternPath, { onStateChange(state.copy(regionPatternPath = it)) }
+                    ) { patternPicker.launch() }
+                } else {
+                    PathRow(
+                        "MCFunction 过滤规则 JSON",
+                        "留空则使用内置规则...",
+                        state.mcfPatternPath, { onStateChange(state.copy(mcfPatternPath = it)) }
+                    ) { mcfPatternPicker.launch() }
+                    PathRow(
+                        "MCJson 过滤规则 JSON",
+                        "留空则使用内置规则...",
+                        state.mcjPatternPath, { onStateChange(state.copy(mcjPatternPath = it)) }
+                    ) { mcjPatternPicker.launch() }
+                }
+            }
         }
 
         Spacer(Modifier.height(4.dp))
 
-        ActionButton("开始提取", isRunning, onRun, enabled = inputPath.isNotBlank() && outputPath.isNotBlank())
+        ActionButton("开始提取", isRunning, onRun, enabled = state.input.isNotBlank() && state.output.isNotBlank())
     }
 }
 
@@ -113,54 +121,50 @@ fun ExtractPanel(
 
 @Composable
 fun TranslatePanel(
-    inputPath: String, onInputChange: (String) -> Unit,
-    outputPath: String, onOutputChange: (String) -> Unit,
-    mappingOutput: String, onMappingOutput: (String) -> Unit,
-    termOutput: String, onTermOutputChange: (String) -> Unit,
-    apiUrl: String, onApiUrlChange: (String) -> Unit,
-    apiToken: String, onApiTokenChange: (String) -> Unit,
-    model: String, onModelChange: (String) -> Unit,
-    useStreamApi: Boolean, onUseStreamApiChange: (Boolean) -> Unit,
-    existingTermPath: String, onExistingTermPathChange: (String) -> Unit,
-    onSaveSettings: () -> Unit,
-    translationProgress: Float, translationStatus: String,
-    isRunning: Boolean, onRun: () -> Unit
+    state: TranslateState,
+    onStateChange: (TranslateState) -> Unit,
+    translationProgress: Float,
+    translationStatus: String,
+    isRunning: Boolean,
+    onRun: () -> Unit,
+    onSaveSettings: () -> Unit
 ) {
     var showToken by remember { mutableStateOf(false) }
 
     val inputPicker = rememberFilePickerLauncher(
-        type = FileKitType.File(),
-        mode = FileKitMode.Single
-    ) { file: PlatformFile? -> file?.let { onInputChange(it.absolutePath()) } }
+        type = FileKitType.File(), mode = FileKitMode.Single
+    ) { file: PlatformFile? -> file?.let { onStateChange(state.copy(input = it.absolutePath())) } }
 
     val outputSaver = rememberFileSaverLauncher(FileKitDialogSettings.createDefault()) { file: PlatformFile? ->
-        file?.let { onOutputChange(ensureJsonExt(it.absolutePath())) }
+        file?.let { onStateChange(state.copy(output = ensureJsonExt(it.absolutePath()))) }
     }
     val termSaver = rememberFileSaverLauncher(FileKitDialogSettings.createDefault()) { file: PlatformFile? ->
-        file?.let { onTermOutputChange(ensureJsonExt(it.absolutePath())) }
+        file?.let { onStateChange(state.copy(termOutput = ensureJsonExt(it.absolutePath()))) }
     }
     val termPicker = rememberFilePickerLauncher(
-        type = FileKitType.File(),
-        mode = FileKitMode.Single
-    ) { file: PlatformFile? -> file?.let { onExistingTermPathChange(it.absolutePath()) } }
+        type = FileKitType.File(), mode = FileKitMode.Single
+    ) { file: PlatformFile? -> file?.let { onStateChange(state.copy(existingTermPath = it.absolutePath())) } }
 
     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle("输入 / 输出", Icons.Outlined.FolderOpen)
 
-        PathRow("提取结果 JSON（来自步骤①）", "选择 extractions.json...", inputPath, onInputChange) {
+        PathRow("提取结果 JSON（来自步骤①）", "选择 extractions.json...", state.input, { onStateChange(state.copy(input = it)) }) {
             inputPicker.launch()
         }
-        PathRow("输出替换Mapping JSON", "选择保存位置...", mappingOutput, onMappingOutput) {
+        PathRow("输出替换Mapping JSON", "选择保存位置...", state.mappingOutput, { onStateChange(state.copy(mappingOutput = it)) }) {
             outputSaver.launch(suggestedName = "mappings", extension = "json")
         }
-        PathRow("输出替换文件 JSON", "选择保存位置...", outputPath, onOutputChange) {
+        PathRow("输出替换文件 JSON", "选择保存位置...", state.output, { onStateChange(state.copy(output = it)) }) {
             outputSaver.launch(suggestedName = "replacements", extension = "json")
         }
-        PathRow("输出术语表 JSON", "选择保存位置...", termOutput, onTermOutputChange) {
+        PathRow("输出术语表 JSON", "选择保存位置...", state.termOutput, { onStateChange(state.copy(termOutput = it)) }) {
             termSaver.launch(suggestedName = "terms", extension = "json")
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 4.dp),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
 
         SectionTitle("AI API 配置", Icons.Outlined.Settings)
         Text(
@@ -169,53 +173,38 @@ fun TranslatePanel(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        OutlinedTextField(
-            value = apiUrl,
-            onValueChange = onApiUrlChange,
+        ConfigTextField(
+            value = state.apiUrl,
+            onValueChange = { onStateChange(state.copy(apiUrl = it)) },
             label = { Text("API 地址") },
-            placeholder = { Text("留空使用 OpenAI 官方；或填入 https://api.openai.com/v1/") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-            )
+            placeholder = { Text("留空使用 OpenAI 官方；或填入 https://api.openai.com/v1/") }
         )
 
-        OutlinedTextField(
-            value = model,
-            onValueChange = onModelChange,
+        ConfigTextField(
+            value = state.model,
+            onValueChange = { onStateChange(state.copy(model = it)) },
             label = { Text("模型名称") },
-            placeholder = { Text("例如 gpt-4o, gpt-4o-mini, deepseek-chat...") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-            )
+            placeholder = { Text("例如 gpt-4o, gpt-4o-mini, deepseek-chat...") }
         )
 
-        OutlinedTextField(
-            value = apiToken,
-            onValueChange = onApiTokenChange,
+        ConfigTextField(
+            value = state.apiToken,
+            onValueChange = { onStateChange(state.copy(apiToken = it)) },
             label = { Text("API 密钥") },
             placeholder = { Text("sk-...") },
-            singleLine = true,
             visualTransformation = if (showToken) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 TextButton(onClick = { showToken = !showToken }) {
                     Text(if (showToken) "隐藏" else "显示")
                 }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-            )
+            }
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = useStreamApi, onCheckedChange = onUseStreamApiChange)
+            Checkbox(
+                checked = state.useStreamApi,
+                onCheckedChange = { onStateChange(state.copy(useStreamApi = it)) }
+            )
             Text(
                 "使用流式API(可以解决持续空行的过多重试, 但是可能导致返回变慢)",
                 style = MaterialTheme.typography.bodyMedium,
@@ -223,11 +212,14 @@ fun TranslatePanel(
             )
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 4.dp),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
 
         SectionTitle("可选设置", Icons.Outlined.MoreHoriz)
 
-        PathRow("已有术语表 JSON（可选）", "留空则从头翻译...", existingTermPath, onExistingTermPathChange) {
+        PathRow("已有术语表 JSON（可选）", "留空则从头翻译...", state.existingTermPath, { onStateChange(state.copy(existingTermPath = it)) }) {
             termPicker.launch()
         }
 
@@ -235,7 +227,9 @@ fun TranslatePanel(
         AnimatedVisibility(visible = isRunning || translationProgress > 0f) {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
             ) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(
@@ -273,7 +267,7 @@ fun TranslatePanel(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = onSaveSettings,
-                enabled = model.isNotBlank() && apiToken.isNotBlank(),
+                enabled = state.model.isNotBlank() && state.apiToken.isNotBlank(),
                 modifier = Modifier.weight(0.35f).height(44.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -289,8 +283,8 @@ fun TranslatePanel(
                     "开始 AI 翻译",
                     isRunning,
                     onRun,
-                    enabled = inputPath.isNotBlank() && outputPath.isNotBlank()
-                            && termOutput.isNotBlank() && model.isNotBlank() && apiToken.isNotBlank()
+                    enabled = state.input.isNotBlank() && state.output.isNotBlank()
+                            && state.termOutput.isNotBlank() && state.model.isNotBlank() && state.apiToken.isNotBlank()
                 )
             }
         }
@@ -301,43 +295,43 @@ fun TranslatePanel(
 
 @Composable
 fun BackfillPanel(
-    inputPath: String, onInputChange: (String) -> Unit,
-    replacementsPath: String, onReplacementsChange: (String) -> Unit,
-    mode: String, onModeChange: (String) -> Unit,
-    isRunning: Boolean, onRun: () -> Unit
+    state: BackfillState,
+    onStateChange: (BackfillState) -> Unit,
+    isRunning: Boolean,
+    onRun: () -> Unit
 ) {
     val dirPicker = rememberDirectoryPickerLauncher { file: PlatformFile? ->
-        file?.let { onInputChange(it.absolutePath()) }
+        file?.let { onStateChange(state.copy(input = it.absolutePath())) }
     }
     val filePicker = rememberFilePickerLauncher(
-        type = FileKitType.File(),
-        mode = FileKitMode.Single
-    ) { file: PlatformFile? -> file?.let { onReplacementsChange(it.absolutePath()) } }
+        type = FileKitType.File(), mode = FileKitMode.Single
+    ) { file: PlatformFile? -> file?.let { onStateChange(state.copy(replacements = it.absolutePath())) } }
 
     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle("输入 / 输出", Icons.Outlined.FolderOpen)
 
-        PathRow("Minecraft 存档目录", "选择包含 level.dat 的文件夹...", inputPath, onInputChange) {
+        PathRow("Minecraft 存档目录", "选择包含 level.dat 的文件夹...", state.input, { onStateChange(state.copy(input = it)) }) {
             dirPicker.launch()
         }
-        PathRow("替换文件 JSON（来自步骤②）", "选择 replacements.json...", replacementsPath, onReplacementsChange) {
+        PathRow("替换文件 JSON（来自步骤②）", "选择 replacements.json...", state.replacements, { onStateChange(state.copy(replacements = it)) }) {
             filePicker.launch()
         }
 
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 4.dp),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
 
         SectionTitle("回填模式", Icons.Outlined.Tune)
 
         Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-            ModeRadio("Region (.mca 区域文件)", mode == "region") { onModeChange("region") }
-            ModeRadio("Datapack (数据包)", mode == "datapack") { onModeChange("datapack") }
+            ModeRadio(RunMode.Region.label, state.mode == RunMode.Region) { onStateChange(state.copy(mode = RunMode.Region)) }
+            ModeRadio(RunMode.Datapack.label, state.mode == RunMode.Datapack) { onStateChange(state.copy(mode = RunMode.Datapack)) }
         }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-            )
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f))
         ) {
             Row(
                 modifier = Modifier.padding(12.dp),
@@ -360,12 +354,7 @@ fun BackfillPanel(
 
         Spacer(Modifier.height(4.dp))
 
-        ActionButton(
-            "开始回填",
-            isRunning,
-            onRun,
-            enabled = inputPath.isNotBlank() && replacementsPath.isNotBlank()
-        )
+        ActionButton("开始回填", isRunning, onRun, enabled = state.input.isNotBlank() && state.replacements.isNotBlank())
     }
 }
 
