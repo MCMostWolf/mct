@@ -9,10 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Restore
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Terminal
-import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +24,7 @@ import androidx.compose.ui.window.application
 import arrow.core.raise.either
 import kotlinx.coroutines.launch
 import mct.Env
+import mct.LoggerLevel
 import mct.extra.translator.TranslateSign
 import mct.on
 import mct.onSign
@@ -56,7 +54,7 @@ fun main() = application {
 @Composable
 fun App() {
     var selectedTab by remember { mutableStateOf(Tab.Extract) }
-    var logText by remember { mutableStateOf("就绪。\n") }
+    var logLines = remember { mutableStateListOf(LogEntry(null, "就绪。")) }
     var isRunning by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -68,9 +66,14 @@ fun App() {
     var translateProgress by remember { mutableFloatStateOf(0f) }
     var translateStatus by remember { mutableStateOf("") }
 
+    // 日志过滤
+    var logLevelFilter by remember {
+        mutableStateOf(setOf(LoggerLevel.Info, LoggerLevel.Warning, LoggerLevel.Error, LoggerLevel.Debug))
+    }
+    var showLogSettings by remember { mutableStateOf(false) }
 
     val guiLogger = remember {
-        GuiLogger { logText += it }.onSign {
+        GuiLogger { entry -> logLines.add(entry) }.onSign {
             on<TranslateSign> { sign ->
                 when (sign) {
                     is TranslateSign.Progress -> {
@@ -97,7 +100,7 @@ fun App() {
             apiToken = savedSettings.apiToken
         )
         if (savedSettings.apiUrl.isNotBlank() || savedSettings.apiToken.isNotBlank()) {
-            logText += "已加载 API 设置 ($settingsPathString)\n"
+            logLines.add(LogEntry(null, "已加载 API 设置 ($settingsPathString)"))
         }
     }
 
@@ -173,7 +176,7 @@ fun App() {
                                 onStateChange = { extractState = it },
                                 isRunning = isRunning,
                                 onRun = {
-                                    isRunning = true; logText = ""
+                                    isRunning = true; logLines.clear()
                                     scope.launch {
                                         runExtraction(
                                             env, extractState.input, extractState.output, extractState.mode.key,
@@ -194,7 +197,7 @@ fun App() {
                                 isRunning = isRunning,
                                 onRun = {
                                     isRunning = true
-                                    logText = ""
+                                    logLines.clear()
                                     translateProgress = 0f
                                     translateStatus = ""
                                     scope.launch {
@@ -223,10 +226,10 @@ fun App() {
                                     }
                                 },
                                 onSaveSettings = {
-                                    logText += if (saveSettings(translateState.apiUrl, translateState.model, translateState.apiToken))
-                                        "API 设置已保存到 $settingsPathString\n"
+                                    logLines.add(LogEntry(null, if (saveSettings(translateState.apiUrl, translateState.model, translateState.apiToken))
+                                        "API 设置已保存到 $settingsPathString"
                                     else
-                                        "保存 API 设置失败\n"
+                                        "保存 API 设置失败"))
                                 }
                             )
 
@@ -235,7 +238,7 @@ fun App() {
                                 onStateChange = { backfillState = it },
                                 isRunning = isRunning,
                                 onRun = {
-                                    isRunning = true; logText = ""
+                                    isRunning = true; logLines.clear()
                                     scope.launch {
                                         runBackfill(env, backfillState.input, backfillState.replacements, backfillState.mode.key)
                                         isRunning = false
@@ -267,6 +270,45 @@ fun App() {
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(Modifier.weight(1f))
+                    Box {
+                        IconButton(onClick = { showLogSettings = true }) {
+                            Icon(
+                                Icons.Outlined.Settings,
+                                contentDescription = "日志过滤",
+                                modifier = Modifier.size(18.dp),
+                                tint = if (logLevelFilter.size < 4) MaterialTheme.colorScheme.primary
+                                       else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showLogSettings,
+                            onDismissRequest = { showLogSettings = false }
+                        ) {
+                            Text(
+                                "日志级别过滤",
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                            HorizontalDivider()
+                            listOf(LoggerLevel.Info, LoggerLevel.Warning, LoggerLevel.Error, LoggerLevel.Debug).forEach { level ->
+                                val checked = level in logLevelFilter
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Checkbox(checked = checked, onCheckedChange = null)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(level.name)
+                                        }
+                                    },
+                                    onClick = {
+                                        logLevelFilter = if (checked) logLevelFilter - level
+                                                         else logLevelFilter + level
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(4.dp))
@@ -281,10 +323,11 @@ fun App() {
                     Box(modifier = Modifier.fillMaxSize()) {
                         SelectionContainer {
                             Text(
-                                text = logText,
-                                modifier = Modifier.fillMaxSize().padding(10.dp).verticalScroll(logScroll),
+                                text = coloredLogAnnotatedString(
+                                    logLines.filter { it.level == null || it.level in logLevelFilter }
+                                ),
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp).verticalScroll(logScroll),
                                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         TextButton(

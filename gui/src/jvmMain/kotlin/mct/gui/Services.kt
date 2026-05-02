@@ -53,12 +53,12 @@ data class ApiSettings(
  * - Sign messages are silently dropped (they are intercepted upstream by `onSign<>` wrappers).
  */
 class GuiLogger(
-    private val onLog: (String) -> Unit
+    private val onLog: (LogEntry) -> Unit
 ) : Logger(LoggerLevel.Verbose) {
     override fun log(level: LoggerLevel, message: String) {
         println(message)
         if (level == LoggerLevel.Sign) return
-        onLog("[$level] $message\n")
+        onLog(LogEntry(level, message))
     }
 }
 

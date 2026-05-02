@@ -8,9 +8,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import mct.LoggerLevel
 
 // ── 可复用组件 ───────────────────────────────────────────────
 
@@ -175,4 +182,42 @@ fun ConfigTextField(
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
         )
     )
+}
+
+// ── 结构化日志 ────────────────────────────────────────────────
+
+data class LogEntry(
+    val level: LoggerLevel?,
+    val message: String,
+)
+
+fun coloredLogAnnotatedString(logLines: List<LogEntry>) = buildAnnotatedString {
+    for ((i, entry) in logLines.withIndex()) {
+        if (i > 0) append("\n")
+        val level = entry.level ?: run {
+            withStyle(SpanStyle(color = Color(0xFFE0E0E0))) { append(entry.message) }
+            return@buildAnnotatedString
+        }
+        val badgeColor = when (level) {
+            LoggerLevel.Info -> Color(0xFF4CAF50)
+            LoggerLevel.Warning -> Color(0xFFFFA726)
+            LoggerLevel.Error -> Color(0xFFEF5350)
+            LoggerLevel.Debug -> Color(0xFF78909C)
+            LoggerLevel.Sign -> Color(0xFF9C27B0)
+        }
+        val badgeLetter = level.name.first().uppercase()
+        val textColor = when (level) {
+            LoggerLevel.Info -> Color(0xFFC8E6C9)
+            LoggerLevel.Warning -> Color(0xFFFFF3E0)
+            LoggerLevel.Error -> Color(0xFFFFCDD2)
+            LoggerLevel.Debug -> Color(0xFFB0BEC5)
+            LoggerLevel.Sign -> Color(0xFFE1BEE7)
+        }
+        withStyle(SpanStyle(
+            color = Color.White, background = badgeColor,
+            fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace,
+        )) { append(" $badgeLetter ") }
+        append(" ")
+        withStyle(SpanStyle(color = textColor)) { append(entry.message) }
+    }
 }
