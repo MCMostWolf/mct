@@ -3,10 +3,8 @@ package mct
 import io.kotest.assertions.arrow.core.shouldNotRaise
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.collections.shouldBeEmpty
 import kotlinx.coroutines.flow.toList
-import mct.DatapackReplacementGroup
-import mct.RegionReplacementGroup
 import mct.dp.backfillDatapack
 import mct.dp.extractFromDatapack
 import mct.kit.replaceSimply
@@ -33,7 +31,7 @@ class WorkspaceTest : StringSpec({
         val workspace = TestMapWorkspace()
         shouldNotRaise {
             val extractions = workspace.extractFromDatapack().toList()
-            extractions.shouldNotBeEmpty()
+            extractions.shouldBeEmpty() // due to the mapping not existing any datapack
         }
     }
 

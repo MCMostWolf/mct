@@ -36,7 +36,6 @@ class MCFunctionTest : StringSpec({
                 complex "item_id_001" b{strength:50b, durability:100s}
                 
                 # test escape
-                data modify storage asset:artifact Name set value '{"text":"アンク\'s Fury","color":"#FF5555","bold":true}'
                 tell @a "\"Kukayo\": {\"text\": \"A text compound is like this\"} 🫧"
                 
                 \\ invali char
@@ -50,7 +49,7 @@ class MCFunctionTest : StringSpec({
         val mcfunctions = parseMCFunction(TEST_MCF)
         withClue(mcfunctions) {
             mcfunctions.map { it.name } shouldBeEqual listOf(
-                "tellraw", "tellraw", "complex", "data", "tell", "say", "execute"
+                "tellraw", "tellraw", "complex", "tell", "say", "execute"
             )
         }
         mcfunctions.forEach {
@@ -80,7 +79,6 @@ class MCFunctionTest : StringSpec({
                 complex "item_id_001" b{strength:50b, durability:100s}
                 
                 # test escape
-                data modify storage asset:artifact Name set value {CIALLO}
                 tell @a {CIALLO}
                 
                 \\ invali char

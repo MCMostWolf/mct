@@ -15,12 +15,13 @@ class OpenAITranslatorTest : StringSpec({
     fun translator() = shouldNotRaise { OpenAITranslator(apiUrl!!, token!!, model!!, defaultTerms = emptySet()) }
 
 
+
     "parse test" {
         val response = """
             -- MCT-CLI:TRANSLATED --
-            a
-            b
-            c
+            [0] a
+            [1] b
+            [2] c
             -- MCT-CLI:TERMS --
             [{"source":"Iroha","target":"彩叶","type":"name"}]
             -- MCT-CLI:END --
